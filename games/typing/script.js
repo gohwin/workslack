@@ -5,11 +5,13 @@
 // from ../crossword/crossword_words.js -- the exact same word list the
 // crossword uses, reused here instead of duplicated.
 
-// Words fall continuously and spawn faster over time (not a shrinking
-// per-word timer) -- one word reaching the bottom ends the game instantly,
-// no lives. Difficulty is "how many words are in the air at once", not
-// "how fast you must clear this one word".
-const FALL_SPEED_PX_PER_SEC = 55;
+// Words fall continuously (not a shrinking per-word timer) -- one word
+// reaching the bottom ends the game instantly, no lives. Difficulty ramps
+// two ways over elapsed survival time: words spawn more often (more of
+// them in the air at once) AND fall faster (less reaction time per word).
+const FALL_SPEED_START = 55;
+const FALL_SPEED_MAX = 140;
+const FALL_SPEED_RAMP_SECONDS = 90; // fall speed reaches its ceiling after this long survived
 const SPAWN_START_MS = 1800;
 const SPAWN_MIN_MS = 450;
 const SPAWN_RAMP_SECONDS = 75; // spawn interval reaches its floor after this long survived
@@ -65,6 +67,11 @@ function currentSpawnIntervalMs() {
   return SPAWN_START_MS - (SPAWN_START_MS - SPAWN_MIN_MS) * ramp;
 }
 
+function currentFallSpeed() {
+  const ramp = Math.min(1, elapsedSeconds / FALL_SPEED_RAMP_SECONDS);
+  return FALL_SPEED_START + (FALL_SPEED_MAX - FALL_SPEED_START) * ramp;
+}
+
 function formatTime(totalSeconds) {
   const m = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
   const s = Math.floor(totalSeconds % 60).toString().padStart(2, "0");
@@ -113,8 +120,9 @@ function frame(ts) {
   }
 
   const areaHeight = playAreaEl.clientHeight;
+  const fallSpeed = currentFallSpeed();
   for (const w of activeWords) {
-    w.y += FALL_SPEED_PX_PER_SEC * dt;
+    w.y += fallSpeed * dt;
     w.el.style.top = `${w.y}px`;
     if (w.y + w.el.offsetHeight >= areaHeight) {
       endGame();
