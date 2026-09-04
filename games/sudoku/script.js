@@ -1,7 +1,7 @@
 const DIFFICULTIES = {
-  easy: { label: "쉬움", clues: 40, points: 5 },
-  medium: { label: "중간", clues: 32, points: 10 },
-  hard: { label: "어려움", clues: 26, points: 20 },
+  easy: { label: "쉬움", clues: 40, points: 50 },
+  medium: { label: "중간", clues: 32, points: 100 },
+  hard: { label: "어려움", clues: 26, points: 200 },
 };
 
 const STORAGE_KEY = "sudoku-best-times";

@@ -1,7 +1,7 @@
 const DIFFICULTIES = {
-  easy: { label: "쉬움", rows: 9, cols: 9, mines: 10, points: 5 },
-  medium: { label: "중간", rows: 16, cols: 16, mines: 40, points: 10 },
-  hard: { label: "어려움", rows: 16, cols: 30, mines: 99, points: 20 },
+  easy: { label: "쉬움", rows: 9, cols: 9, mines: 10, points: 50 },
+  medium: { label: "중간", rows: 16, cols: 16, mines: 40, points: 100 },
+  hard: { label: "어려움", rows: 16, cols: 30, mines: 99, points: 200 },
 };
 
 const STORAGE_KEY = "minesweeper-best-times";

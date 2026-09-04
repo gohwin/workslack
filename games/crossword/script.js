@@ -3,7 +3,7 @@
 // its top-level declarations are plain globals here too, same as
 // ../../firebase-config.js's window.__firebaseConfig).
 
-const POINTS_PER_COMPLETION = 10;
+const POINTS_PER_COMPLETION = 100;
 // autoPlace()/normalize()/COMMON_POOL come from ./auto_crossword.js and
 // ./crossword_words.js (loaded via <script> tags before this file) -- the
 // same generator ../tools/build_puzzles.js used to run offline to
