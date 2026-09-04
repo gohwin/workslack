@@ -5,11 +5,18 @@
 // from ../crossword/crossword_words.js -- the exact same word list the
 // crossword uses, reused here instead of duplicated.
 
-const LIVES_START = 3;
+// Words fall continuously and spawn faster over time (not a shrinking
+// per-word timer) -- one word reaching the bottom ends the game instantly,
+// no lives. Difficulty is "how many words are in the air at once", not
+// "how fast you must clear this one word".
+const FALL_SPEED_PX_PER_SEC = 55;
+const SPAWN_START_MS = 1800;
+const SPAWN_MIN_MS = 450;
+const SPAWN_RAMP_SECONDS = 75; // spawn interval reaches its floor after this long survived
+const MAX_ACTIVE_WORDS = 7;
 
-// Which word lengths are in play at a given score -- widens as score climbs
-// so both "how long the word is" and "how fast you must type it" ramp up
-// together, matching a real typing-game difficulty curve.
+// Longer words enter the pool as score climbs, same idea as before, just
+// keyed off words-popped instead of a per-word clear.
 const LENGTH_TIERS = [
   { minScore: 0, maxLen: 2 },
   { minScore: 5, maxLen: 3 },
@@ -17,26 +24,21 @@ const LENGTH_TIERS = [
   { minScore: 20, maxLen: 5 },
 ];
 
-const BASE_TIME_PER_SYLLABLE = 1.15;
-const MIN_TIME = 1.3;
-const SPEED_DECAY_PER_SCORE = 0.018;
-const SPEED_FLOOR = 0.5;
-
 let score = 0;
-let lives = LIVES_START;
-let currentWord = null;
-let timeLimit = 0;
-let remaining = 0;
-let tickHandle = null;
-let lastAnswer = null; // avoid immediately repeating the same word
+let elapsedSeconds = 0;
+let spawnTimerMs = 0;
+let lastFrameTime = 0;
+let rafHandle = null;
+let running = false;
+let activeWords = []; // { el, answer, y }
+let lastSpawnedAnswer = null;
 
 const startScreenEl = document.getElementById("start-screen");
 const gameScreenEl = document.getElementById("game-screen");
 const resultOverlayEl = document.getElementById("result-overlay");
 const scoreLabelEl = document.getElementById("score-label");
-const livesLabelEl = document.getElementById("lives-label");
-const wordDisplayEl = document.getElementById("word-display");
-const timerBarEl = document.getElementById("timer-bar");
+const timeLabelEl = document.getElementById("time-label");
+const playAreaEl = document.getElementById("play-area");
 const inputEl = document.getElementById("typing-input");
 const resultScoreEl = document.getElementById("result-score");
 const resultPointsEl = document.getElementById("result-points");
@@ -74,74 +76,103 @@ function currentMaxLen() {
 
 function pickWord() {
   const maxLen = currentMaxLen();
-  const candidates = COMMON_POOL.filter((w) => w.answer.length <= maxLen && w.answer !== lastAnswer);
+  const candidates = COMMON_POOL.filter((w) => w.answer.length <= maxLen && w.answer !== lastSpawnedAnswer);
   const pool = candidates.length ? candidates : COMMON_POOL;
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-function timeForWord(word) {
-  const speedFactor = Math.max(SPEED_FLOOR, 1 - score * SPEED_DECAY_PER_SCORE);
-  return Math.max(MIN_TIME, word.answer.length * BASE_TIME_PER_SYLLABLE * speedFactor);
+function currentSpawnIntervalMs() {
+  const ramp = Math.min(1, elapsedSeconds / SPAWN_RAMP_SECONDS);
+  return SPAWN_START_MS - (SPAWN_START_MS - SPAWN_MIN_MS) * ramp;
+}
+
+function formatTime(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
+  const s = Math.floor(totalSeconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
 }
 
 function updateHud() {
   scoreLabelEl.textContent = `점수 ${score}`;
-  livesLabelEl.textContent = "❤".repeat(lives) + "🖤".repeat(LIVES_START - lives);
+  timeLabelEl.textContent = formatTime(elapsedSeconds);
 }
 
-function stopTick() {
-  if (tickHandle) {
-    clearInterval(tickHandle);
-    tickHandle = null;
+function spawnWord() {
+  if (activeWords.length >= MAX_ACTIVE_WORDS) return;
+  const word = pickWord();
+  lastSpawnedAnswer = word.answer;
+
+  const el = document.createElement("div");
+  el.className = "falling-word";
+  el.textContent = word.answer;
+  playAreaEl.appendChild(el);
+
+  const areaWidth = playAreaEl.clientWidth;
+  const elWidth = el.offsetWidth;
+  const x = Math.max(0, Math.random() * Math.max(0, areaWidth - elWidth));
+  el.style.left = `${x}px`;
+  el.style.top = "-32px";
+
+  activeWords.push({ el, answer: word.answer, y: -32 });
+}
+
+function clearActiveWords() {
+  for (const w of activeWords) w.el.remove();
+  activeWords = [];
+}
+
+function frame(ts) {
+  if (!running) return;
+  const dt = lastFrameTime ? (ts - lastFrameTime) / 1000 : 0;
+  lastFrameTime = ts;
+  elapsedSeconds += dt;
+  spawnTimerMs += dt * 1000;
+
+  if (spawnTimerMs >= currentSpawnIntervalMs()) {
+    spawnTimerMs = 0;
+    spawnWord();
   }
-}
 
-function nextWord() {
-  currentWord = pickWord();
-  lastAnswer = currentWord.answer;
-  wordDisplayEl.textContent = currentWord.answer;
-  inputEl.value = "";
-
-  timeLimit = timeForWord(currentWord);
-  remaining = timeLimit;
-  timerBarEl.style.transform = "scaleX(1)";
-  timerBarEl.classList.remove("timer-bar--low");
-
-  stopTick();
-  const tickMs = 50;
-  tickHandle = setInterval(() => {
-    remaining -= tickMs / 1000;
-    const ratio = Math.max(0, remaining / timeLimit);
-    timerBarEl.style.transform = `scaleX(${ratio})`;
-    timerBarEl.classList.toggle("timer-bar--low", ratio < 0.3);
-    if (remaining <= 0) {
-      stopTick();
-      onMiss();
+  const areaHeight = playAreaEl.clientHeight;
+  for (const w of activeWords) {
+    w.y += FALL_SPEED_PX_PER_SEC * dt;
+    w.el.style.top = `${w.y}px`;
+    if (w.y + w.el.offsetHeight >= areaHeight) {
+      endGame();
+      return;
     }
-  }, tickMs);
-}
-
-function onMiss() {
-  lives -= 1;
-  updateHud();
-  wordDisplayEl.classList.add("shake");
-  setTimeout(() => wordDisplayEl.classList.remove("shake"), 300);
-  if (lives <= 0) {
-    endGame();
-  } else {
-    nextWord();
   }
-}
 
-function onCorrect() {
-  score += 1;
   updateHud();
-  stopTick();
-  nextWord();
+  rafHandle = requestAnimationFrame(frame);
 }
 
-function checkInput(value) {
-  if (currentWord && value === currentWord.answer) onCorrect();
+function handleTypingChange() {
+  const value = inputEl.value;
+
+  const idx = activeWords.findIndex((w) => w.answer === value);
+  if (idx !== -1) {
+    const [popped] = activeWords.splice(idx, 1);
+    popped.el.classList.add("popped");
+    setTimeout(() => popped.el.remove(), 150);
+    score += 1;
+    updateHud();
+    inputEl.value = "";
+    for (const w of activeWords) w.el.classList.remove("targeted");
+    return;
+  }
+
+  const hasPrefixMatch = value.length > 0 && activeWords.some((w) => w.answer.startsWith(value));
+  if (value.length > 0 && !hasPrefixMatch) {
+    // typed something that no falling word starts with -- reset instead of
+    // letting the player get stuck on a dead-end string
+    inputEl.value = "";
+    for (const w of activeWords) w.el.classList.remove("targeted");
+    return;
+  }
+  for (const w of activeWords) {
+    w.el.classList.toggle("targeted", value.length > 0 && w.answer.startsWith(value));
+  }
 }
 
 // 한글은 IME로 자모를 조합해 완성하므로, 조합이 끝나는 시점(compositionend)에만
@@ -149,9 +180,9 @@ function checkInput(value) {
 // 두 이벤트가 겹쳐 두 번 처리되는 걸 막기 위해 skipNextInput으로 한 번 걸러준다
 // (../crossword/script.js와 동일한 패턴).
 let skipNextInput = false;
-inputEl.addEventListener("compositionend", (e) => {
+inputEl.addEventListener("compositionend", () => {
   skipNextInput = true;
-  checkInput(e.target.value);
+  handleTypingChange();
 });
 inputEl.addEventListener("input", (e) => {
   if (skipNextInput) {
@@ -159,32 +190,46 @@ inputEl.addEventListener("input", (e) => {
     return;
   }
   if (e.isComposing) return;
-  checkInput(e.target.value);
+  handleTypingChange();
 });
 
 function startGame() {
   score = 0;
-  lives = LIVES_START;
-  lastAnswer = null;
+  elapsedSeconds = 0;
+  spawnTimerMs = 0;
+  lastFrameTime = 0;
+  lastSpawnedAnswer = null;
+  clearActiveWords();
+  inputEl.value = "";
+
   startScreenEl.hidden = true;
   resultOverlayEl.hidden = true;
   gameScreenEl.hidden = false;
   updateHud();
-  nextWord();
+
+  running = true;
   inputEl.focus();
+  rafHandle = requestAnimationFrame(frame);
 }
 
 // Points are an account feature (awardPoints() from ../../auth.js is a
 // no-op for guests) -- the game itself is fully playable, and replayable
 // without limit, whether you're logged in or not. Score IS the point
 // amount here (no fixed per-difficulty table like sudoku/minesweeper),
-// since this game has no discrete "cleared" state to attach a flat award
-// to -- it's endless until you run out of lives.
+// since there's no discrete "cleared" state -- it's endless until a word
+// reaches the bottom.
 async function endGame() {
-  stopTick();
+  running = false;
+  if (rafHandle) cancelAnimationFrame(rafHandle);
+  rafHandle = null;
+
+  gameScreenEl.classList.add("game-over-flash");
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  gameScreenEl.classList.remove("game-over-flash");
+
   gameScreenEl.hidden = true;
   resultOverlayEl.hidden = false;
-  resultScoreEl.textContent = `최종 점수: ${score}`;
+  resultScoreEl.textContent = `점수 ${score} · 생존 ${formatTime(elapsedSeconds)}`;
   resultPointsEl.textContent = currentUser ? "" : "로그인하면 점수가 쌓여요.";
   if (score > 0) {
     const awarded = await awardPoints(score, "typing", "타자 연습");

@@ -31,8 +31,9 @@
 
   <div id="start-screen" class="start-screen">
     <p class="start-desc">
-      화면에 나오는 단어를 제한 시간 안에 입력하세요. 점수가 오를수록 단어가
-      점점 더 빠르고 길어져요. 목숨은 3개, 다 잃으면 종료됩니다.
+      위에서 단어가 계속 떨어집니다. 떨어지는 단어를 입력해서 터뜨리세요.
+      시간이 지날수록 단어가 더 자주 나옵니다. 하나라도 바닥에 닿으면
+      즉시 게임 오버!
     </p>
     <button id="start-btn" class="btn-start">시작하기</button>
   </div>
@@ -40,12 +41,11 @@
   <div id="game-screen" class="game-screen" hidden>
     <div class="status-bar">
       <span id="score-label">점수 0</span>
-      <span id="lives-label"></span>
+      <span id="time-label">00:00</span>
     </div>
 
-    <div class="word-area">
-      <p id="word-display" class="word-display"></p>
-      <div class="timer-track"><div id="timer-bar" class="timer-bar"></div></div>
+    <div id="play-area" class="play-area">
+      <div class="danger-line"></div>
     </div>
 
     <input
@@ -56,7 +56,7 @@
       autocapitalize="off"
       spellcheck="false"
       lang="ko"
-      placeholder="여기에 입력하세요"
+      placeholder="떨어지는 단어를 입력하세요"
     />
   </div>
 

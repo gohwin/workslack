@@ -76,58 +76,70 @@ button:hover {
   display: flex;
   justify-content: center;
   gap: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
   font-weight: 700;
   font-size: 1.1rem;
 }
 
-#lives-label {
-  letter-spacing: 2px;
-}
-
-.word-area {
-  max-width: 420px;
-  margin: 0 auto 24px;
-}
-
-.word-display {
-  font-size: clamp(2rem, 8vw, 3.2rem);
-  font-weight: 800;
-  margin: 0 0 16px;
-  min-height: 1.2em;
-  color: var(--accent-2);
-}
-
-.word-display.shake {
-  animation: shake 0.3s;
-  color: #f87171;
-}
-
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-8px); }
-  75% { transform: translateX(8px); }
-}
-
-.timer-track {
-  height: 8px;
-  border-radius: 4px;
+.play-area {
+  position: relative;
+  width: min(92vw, 600px);
+  height: min(60vh, 460px);
+  margin: 0 auto 16px;
   background: var(--cell-bg);
+  border: 2px solid var(--cell-border);
+  border-radius: 10px;
   overflow: hidden;
 }
 
-.timer-bar {
-  height: 100%;
-  width: 100%;
-  transform-origin: left;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
-  transition: transform 0.05s linear;
+.game-over-flash .play-area {
+  animation: flash 0.2s ease-in-out 2;
 }
 
-.timer-bar--low {
+@keyframes flash {
+  0%, 100% { background: var(--cell-bg); }
+  50% { background: rgba(239, 68, 68, 0.35); }
+}
+
+.danger-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
   background: #f87171;
+  box-shadow: 0 0 10px 1px rgba(248, 113, 113, 0.6);
+}
+
+.falling-word {
+  position: absolute;
+  white-space: nowrap;
+  font-size: 1.15rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--cell-border);
+  color: var(--text-muted);
+}
+
+.falling-word.targeted {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+  background: rgba(34, 211, 238, 0.12);
+}
+
+.falling-word.popped {
+  animation: pop 0.15s ease-out forwards;
+}
+
+@keyframes pop {
+  to {
+    transform: scale(1.4);
+    opacity: 0;
+  }
 }
 
 .typing-input {
