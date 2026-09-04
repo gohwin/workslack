@@ -15,9 +15,16 @@
   },
   {
     "id": "crossword",
-    "title": "오늘의 크로스워드",
-    "description": "매일 자정에 바뀌는 문제를 하루 한 번만 풀 수 있는 크로스워드 (랭킹 지원)",
+    "title": "크로스워드",
+    "description": "매번 새로 생성되는 십자말풀이, 계속 반복해서 즐길 수 있어요",
     "path": "games/crossword/index.html",
     "thumbnail": "games/crossword/thumbnail.svg"
+  },
+  {
+    "id": "typing",
+    "title": "타자 연습",
+    "description": "제한 시간 안에 단어를 입력하세요. 점수가 오를수록 점점 빠르고 길어져요",
+    "path": "games/typing/index.html",
+    "thumbnail": "games/typing/thumbnail.svg"
   }
 ]

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    // 주소가 끝에 "/" 없이 폴더 경로로 열리면(예: /games/typing) style.css, script.js 같은
+    // 상대경로가 상위 폴더 기준으로 깨진다. <base> 태그로는 브라우저 프리로드 스캐너가
+    // 아직 고쳐지지 않은 원래 경로로 CSS를 먼저 요청해버려 소용없으므로, 태그 자체를
+    // 정적으로 두지 않고 경로를 계산해 직접 써넣는다.
+    window.__gameBase = (function () {
+      var path = location.pathname;
+      if (/\/$/.test(path)) return path;
+      var lastSlash = path.lastIndexOf("/");
+      var lastSegment = path.slice(lastSlash + 1);
+      return lastSegment.indexOf(".") !== -1 ? path.slice(0, lastSlash + 1) : path + "/";
+    })();
+    // 로그인/계정은 사이트 전체 공용이라 games/<id>/ 두 단계 위 사이트 루트에 있는
+    // firebase-config.js, auth.js를 그대로 가져다 쓴다.
+    window.__siteBase = window.__gameBase.replace(/games\/[^/]+\/$/, "");
+    document.write('<link rel="stylesheet" href="' + window.__siteBase + 'theme.css">');
+    document.write('<link rel="stylesheet" href="' + window.__gameBase + 'style.css">');
+  </script>
+  <title>타자 연습 - 미니게임 모음</title>
+</head>
+<body>
+  <a class="back-link" href="../../index.html">← 목록으로</a>
+  <h1>타자 연습</h1>
+
+  <p id="account-hint-inline" class="account-hint-inline"></p>
+
+  <div id="start-screen" class="start-screen">
+    <p class="start-desc">
+      화면에 나오는 단어를 제한 시간 안에 입력하세요. 점수가 오를수록 단어가
+      점점 더 빠르고 길어져요. 목숨은 3개, 다 잃으면 종료됩니다.
+    </p>
+    <button id="start-btn" class="btn-start">시작하기</button>
+  </div>
+
+  <div id="game-screen" class="game-screen" hidden>
+    <div class="status-bar">
+      <span id="score-label">점수 0</span>
+      <span id="lives-label"></span>
+    </div>
+
+    <div class="word-area">
+      <p id="word-display" class="word-display"></p>
+      <div class="timer-track"><div id="timer-bar" class="timer-bar"></div></div>
+    </div>
+
+    <input
+      id="typing-input"
+      class="typing-input"
+      type="text"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
+      lang="ko"
+      placeholder="여기에 입력하세요"
+    />
+  </div>
+
+  <div id="result-overlay" class="result-overlay" hidden>
+    <div class="result-card">
+      <p class="result-title">💥 게임 종료!</p>
+      <p id="result-score"></p>
+      <p id="result-points" class="win-points"></p>
+      <button id="restart-btn">다시 시작</button>
+    </div>
+  </div>
+
+  <script>
+    document.write('<script src="' + window.__siteBase + 'games/crossword/crossword_words.js"><\/script>');
+  </script>
+  <script>
+    document.write('<script src="' + window.__siteBase + 'firebase-config.js"><\/script>');
+  </script>
+  <script>
+    document.write('<script src="' + window.__siteBase + 'auth.js"><\/script>');
+  </script>
+  <script>
+    document.write('<script src="' + window.__gameBase + 'script.js"><\/script>');
+  </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <defs>
+    <linearGradient id="bg-typing" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8a3a1f"/>
+      <stop offset="100%" stop-color="#141527"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#bg-typing)"/>
+  <g font-family="sans-serif" font-weight="700">
+    <rect x="70" y="118" width="260" height="64" rx="10" fill="rgba(255,255,255,0.1)" stroke="#ffcf9e" stroke-width="2"/>
+    <text x="130" y="160" font-size="34" text-anchor="middle" fill="#ffffff">단어</text>
+    <rect x="220" y="132" width="4" height="36" fill="#22d3ee">
+      <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="90" y="200" width="220" height="10" rx="5" fill="rgba(255,255,255,0.15)"/>
+    <rect x="90" y="200" width="140" height="10" rx="5" fill="#22d3ee"/>
+  </g>
+</svg>
