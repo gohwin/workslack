@@ -1,0 +1,26 @@
+/* 사이트 전체(workslack.gg) 공용 색상 토큰. 셀렉터는 없고 변수만 정의합니다 --
+   각 게임 폴더의 style.css가 이 값을 가져다 쓰면서 자기만의 레이아웃/규칙은
+   그대로 유지합니다. 새 게임을 추가할 때도 이 파일만 링크하면 톤이 맞습니다. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0c10;
+  --surface: #15171f;
+  --surface-hover: #1b1e28;
+  --border: #262a36;
+  --border-hover: #3a3f4f;
+  --text: #eef0f5;
+  --text-muted: #9096a8;
+  --text-dim: #676c80;
+  --accent: #6d5efc;
+  --accent-2: #22d3ee;
+  --accent-text: #0b0c10;
+
+  /* 게임 보드(스도쿠/지뢰찾기/크로스워드) 전용 톤. 위 --surface/--border류는
+     --bg와 몇 % 차이 안 나서 텍스트 위주 UI(내비게이션, 카드)에는 충분해도,
+     칸 하나하나의 배경/경계선 자체가 콘텐츠인 보드에서는 칸이 서로 구분이
+     안 되고 페이지 배경과도 뭉개져 보인다. 이 토큰들은 보드에서만 써서
+     대비를 확실히 준다. */
+  --cell-bg: #23262f;
+  --cell-bg-alt: #2f3340;
+  --cell-border: #454b5c;
+}

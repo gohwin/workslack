@@ -1,0 +1,23 @@
+[
+  {
+    "id": "sudoku",
+    "title": "스도쿠",
+    "description": "쉬움 · 중간 · 어려움 난이도로 즐기는 클래식 스도쿠",
+    "path": "games/sudoku/index.html",
+    "thumbnail": "games/sudoku/thumbnail.svg"
+  },
+  {
+    "id": "minesweeper",
+    "title": "지뢰찾기",
+    "description": "쉬움 · 중간 · 어려움 난이도로 즐기는 클래식 지뢰찾기",
+    "path": "games/minesweeper/index.html",
+    "thumbnail": "games/minesweeper/thumbnail.svg"
+  },
+  {
+    "id": "crossword",
+    "title": "오늘의 크로스워드",
+    "description": "매일 자정에 바뀌는 문제를 하루 한 번만 풀 수 있는 크로스워드 (랭킹 지원)",
+    "path": "games/crossword/index.html",
+    "thumbnail": "games/crossword/thumbnail.svg"
+  }
+]

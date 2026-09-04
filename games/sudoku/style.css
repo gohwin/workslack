@@ -1,0 +1,253 @@
+body {
+  margin: 0;
+  padding: 24px 16px 48px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  text-align: center;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: var(--accent-2);
+  text-decoration: none;
+}
+
+h1 {
+  margin: 0 0 16px;
+}
+
+.account-hint-inline {
+  max-width: 480px;
+  margin: 0 auto 16px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.account-hint-inline a {
+  color: var(--accent-2);
+}
+
+.difficulty-screen {
+  padding: 40px 16px;
+}
+
+.difficulty-prompt {
+  color: var(--text-muted);
+  margin: 0 0 20px;
+  font-size: 1.05rem;
+}
+
+.difficulty-group--start {
+  flex-direction: column;
+  align-items: center;
+  max-width: 260px;
+  margin: 0 auto;
+}
+
+.diff-btn--start {
+  width: 100%;
+  padding: 14px 0;
+  font-size: 1.05rem;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.difficulty-group,
+.action-group {
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 14px;
+}
+
+button:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-hover);
+}
+
+.diff-btn.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.status-bar {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+#timer {
+  font-weight: 700;
+}
+
+.loading-msg {
+  color: var(--text-dim);
+  margin: 8px 0;
+}
+
+.board-frame {
+  position: relative;
+  width: min(92vw, 450px);
+  margin: 0 auto;
+}
+
+.board-frame::before {
+  content: "";
+  display: block;
+  padding-top: 100%;
+}
+
+.sudoku-board {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--cell-border);
+  border: 2px solid var(--cell-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(14px, 4vw, 20px);
+  border-right: 1px solid var(--cell-border);
+  border-bottom: 1px solid var(--cell-border);
+  cursor: pointer;
+  user-select: none;
+  background: var(--cell-bg);
+  color: var(--accent-2);
+}
+
+.cell:nth-child(9n) {
+  border-right: none;
+}
+
+.cell.row-end {
+  border-bottom: none;
+}
+
+.cell.box-right {
+  border-right: 2px solid var(--cell-border);
+}
+
+.cell.box-bottom {
+  border-bottom: 2px solid var(--cell-border);
+}
+
+.cell.given {
+  color: var(--text);
+  font-weight: 700;
+  background: var(--cell-bg-alt);
+}
+
+.cell.peer {
+  background: rgba(109, 94, 252, 0.12);
+}
+
+.cell.same-value {
+  background: rgba(109, 94, 252, 0.28);
+}
+
+.cell.selected {
+  background: rgba(109, 94, 252, 0.45);
+}
+
+.cell.conflict {
+  color: #ff7a7a;
+  background: rgba(255, 122, 122, 0.18);
+}
+
+.number-pad {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  width: min(92vw, 450px);
+  margin: 16px auto 0;
+}
+
+.num-btn {
+  padding: 12px 0;
+  font-size: 1.1rem;
+}
+
+.erase-btn {
+  grid-column: span 2;
+  font-size: 0.9rem;
+}
+
+.win-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.win-overlay[hidden] {
+  display: none;
+}
+
+.win-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px 24px;
+  max-width: 320px;
+  width: 100%;
+}
+
+.win-title {
+  font-size: 1.3rem;
+  margin: 0 0 8px;
+}
+
+#win-time {
+  color: var(--text-muted);
+  margin: 0 0 4px;
+}
+
+.win-points {
+  color: var(--accent-2);
+  font-weight: 700;
+  margin: 0 0 20px;
+  min-height: 1.2em;
+}
+
+#win-close-btn {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: var(--accent-text);
+  font-weight: 700;
+  width: 100%;
+  padding: 10px 0;
+}

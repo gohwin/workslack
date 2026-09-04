@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <defs>
+    <linearGradient id="bg-crossword" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5b2e8f"/>
+      <stop offset="100%" stop-color="#141527"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#bg-crossword)"/>
+  <g transform="translate(120,50)" font-family="sans-serif" font-size="26" font-weight="700" text-anchor="middle" fill="#ffffff">
+    <!-- SLACK, vertical, column 3 -->
+    <rect x="120" y="0" width="40" height="40" fill="rgba(255,255,255,0.1)" stroke="#e4b7ff" stroke-width="2"/>
+    <text x="140" y="27">S</text>
+    <rect x="120" y="40" width="40" height="40" fill="rgba(255,255,255,0.1)" stroke="#e4b7ff" stroke-width="2"/>
+    <text x="140" y="67">L</text>
+    <rect x="120" y="80" width="40" height="40" fill="rgba(255,255,255,0.1)" stroke="#e4b7ff" stroke-width="2"/>
+    <text x="140" y="107">A</text>
+    <rect x="120" y="120" width="40" height="40" fill="rgba(255,255,255,0.1)" stroke="#e4b7ff" stroke-width="2"/>
+    <text x="140" y="147">C</text>
+    <!-- shared K -->
+    <rect x="120" y="160" width="40" height="40" fill="#22d3ee" stroke="#ffffff" stroke-width="2"/>
+    <text x="140" y="187" fill="#0b0c10">K</text>
+    <!-- WORK, horizontal, row 4 -->
+    <rect x="0" y="160" width="40" height="40" fill="rgba(255,255,255,0.1)" stroke="#e4b7ff" stroke-width="2"/>
+    <text x="20" y="187">W</text>
+    <rect x="40" y="160" width="40" height="40" fill="rgba(255,255,255,0.1)" stroke="#e4b7ff" stroke-width="2"/>
+    <text x="60" y="187">O</text>
+    <rect x="80" y="160" width="40" height="40" fill="rgba(255,255,255,0.1)" stroke="#e4b7ff" stroke-width="2"/>
+    <text x="100" y="187">R</text>
+  </g>
+</svg>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    // 주소가 끝에 "/" 없이 폴더 경로로 열리면(예: /games/my-game) style.css, script.js 같은
+    // 상대경로가 상위 폴더 기준으로 깨진다. <base> 태그로는 브라우저 프리로드 스캐너가
+    // 아직 고쳐지지 않은 원래 경로로 CSS를 먼저 요청해버려 소용없으므로, 태그 자체를
+    // 정적으로 두지 않고 경로를 계산해 직접 써넣는다. 새 게임을 만들 때 이 블록은
+    // 그대로 두고 style.css/script.js 파일명만 필요시 바꾸면 된다.
+    window.__gameBase = (function () {
+      var path = location.pathname;
+      if (/\/$/.test(path)) return path;
+      var lastSlash = path.lastIndexOf("/");
+      var lastSegment = path.slice(lastSlash + 1);
+      return lastSegment.indexOf(".") !== -1 ? path.slice(0, lastSlash + 1) : path + "/";
+    })();
+    // 사이트 공용 색상 토큰(다크 테마). games/<id>/ 두 단계 위 루트의 theme.css를
+    // 그대로 가져다 쓰면 새 게임도 자동으로 톤이 맞는다 — style.css에서
+    // var(--bg), var(--surface), var(--accent) 등을 쓰면 된다.
+    window.__siteBase = window.__gameBase.replace(/games\/[^/]+\/$/, "");
+    document.write('<link rel="stylesheet" href="' + window.__siteBase + 'theme.css">');
+    document.write('<link rel="stylesheet" href="' + window.__gameBase + 'style.css">');
+  </script>
+  <title>새 게임</title>
+</head>
+<body>
+  <a class="back-link" href="../../index.html">← 목록으로</a>
+  <h1>새 게임</h1>
+
+  <canvas id="game-canvas" width="480" height="360"></canvas>
+
+  <script>
+    document.write('<script src="' + window.__gameBase + 'script.js"><\/script>');
+  </script>
+</body>
+</html>
