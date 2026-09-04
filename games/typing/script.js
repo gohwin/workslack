@@ -44,27 +44,6 @@ const resultScoreEl = document.getElementById("result-score");
 const resultPointsEl = document.getElementById("result-points");
 const startBtn = document.getElementById("start-btn");
 const restartBtn = document.getElementById("restart-btn");
-const accountHintInlineEl = document.getElementById("account-hint-inline");
-
-function updateAccountHintInline() {
-  if (!accountHintInlineEl) return;
-  accountHintInlineEl.textContent = "";
-  if (currentUser) {
-    accountHintInlineEl.textContent = `${currentUser.nickname}님으로 로그인됨 (누적 ${currentUser.totalScore}점)`;
-    return;
-  }
-  accountHintInlineEl.appendChild(document.createTextNode("로그인/회원가입은 "));
-  const link = document.createElement("a");
-  link.href = "../../index.html";
-  link.textContent = "메인 페이지";
-  accountHintInlineEl.appendChild(link);
-  accountHintInlineEl.appendChild(document.createTextNode(" 상단에서 할 수 있어요. 로그인하면 점수만큼 그대로 적립됩니다."));
-}
-
-// Called by auth.js whenever login state resolves or changes.
-function onAccountReady() {
-  updateAccountHintInline();
-}
 
 function currentMaxLen() {
   let maxLen = LENGTH_TIERS[0].maxLen;
@@ -239,7 +218,3 @@ async function endGame() {
 
 startBtn.addEventListener("click", startGame);
 restartBtn.addEventListener("click", startGame);
-
-if (typeof isFirebaseConfigured === "function" && isFirebaseConfigured()) {
-  updateAccountHintInline();
-}

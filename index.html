@@ -4,60 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>workslack.gg</title>
+  <link rel="stylesheet" href="site-header.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="nav-bar">
-    <a class="brand" href="index.html">work<span class="brand-accent">slack</span><span class="brand-tld">.gg</span></a>
-
-    <div id="account-area" class="account-area" hidden>
-      <div id="account-guest" class="account-row">
-        <span class="account-hint">계정을 만들면 완료할 때마다 점수가 쌓여요</span>
-        <button id="show-login-btn" class="btn btn-ghost">로그인</button>
-        <button id="show-signup-btn" class="btn btn-accent">회원가입</button>
-      </div>
-      <div id="account-logged-in" class="account-row" hidden>
-        <span id="account-info"></span>
-        <button id="my-info-btn" class="btn btn-ghost">내 정보</button>
-        <button id="logout-btn" class="btn btn-ghost">로그아웃</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="auth-form-area" class="auth-form" hidden>
-    <input id="auth-username" type="text" maxlength="16" placeholder="아이디 (영문/숫자, 3~16자)" autocomplete="off" />
-    <input id="auth-password" type="password" maxlength="64" placeholder="비밀번호 (6자 이상)" autocomplete="off" />
-    <input id="auth-nickname" type="text" maxlength="12" placeholder="닉네임 (최대 12자)" autocomplete="off" hidden />
-    <div class="auth-form-actions">
-      <button id="auth-submit-btn" class="btn btn-accent"></button>
-      <button id="auth-cancel-btn" class="btn btn-ghost">취소</button>
-    </div>
-    <p id="auth-status" class="auth-status"></p>
-  </div>
-
-  <div id="my-info-area" class="my-info-panel" hidden>
-    <div class="my-info-header">
-      <h3>내 정보</h3>
-      <button id="my-info-close-btn" class="my-info-close" aria-label="닫기">✕</button>
-    </div>
-
-    <p id="my-info-score" class="my-info-score"></p>
-
-    <div class="my-info-section">
-      <label for="nickname-change-input">닉네임 변경</label>
-      <div class="my-info-row">
-        <input id="nickname-change-input" type="text" maxlength="12" autocomplete="off" />
-        <button id="nickname-change-btn" class="btn btn-accent">변경</button>
-      </div>
-      <p id="nickname-change-status" class="auth-status"></p>
-    </div>
-
-    <div class="my-info-section">
-      <p class="my-info-section-title">점수 내역</p>
-      <p id="score-history-status" class="leaderboard-status"></p>
-      <ol id="score-history-list" class="score-history-list"></ol>
-    </div>
-  </div>
+  <script src="site-header.js"></script>
 
   <header class="hero">
     <div class="hero-glow hero-glow-a"></div>

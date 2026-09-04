@@ -26,27 +26,6 @@ const winTimeEl = document.getElementById("win-time");
 const difficultyScreen = document.getElementById("difficulty-screen");
 const gameScreen = document.getElementById("game-screen");
 const winPointsEl = document.getElementById("win-points");
-const accountHintInlineEl = document.getElementById("account-hint-inline");
-
-function updateAccountHintInline() {
-  if (!accountHintInlineEl) return;
-  accountHintInlineEl.textContent = "";
-  if (currentUser) {
-    accountHintInlineEl.textContent = `${currentUser.nickname}님으로 로그인됨 (누적 ${currentUser.totalScore}점)`;
-    return;
-  }
-  accountHintInlineEl.appendChild(document.createTextNode("로그인/회원가입은 "));
-  const link = document.createElement("a");
-  link.href = "../../index.html";
-  link.textContent = "메인 페이지";
-  accountHintInlineEl.appendChild(link);
-  accountHintInlineEl.appendChild(document.createTextNode(" 상단에서 할 수 있어요. 로그인하면 깰 때마다 점수가 쌓입니다."));
-}
-
-// Called by auth.js whenever login state resolves or changes.
-function onAccountReady() {
-  updateAccountHintInline();
-}
 
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -393,9 +372,5 @@ document.addEventListener("keydown", (e) => {
     }
   }
 });
-
-if (typeof isFirebaseConfigured === "function" && isFirebaseConfigured()) {
-  updateAccountHintInline();
-}
 
 buildBoardDom();

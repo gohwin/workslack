@@ -18,17 +18,6 @@ h1 {
   margin: 0 0 16px;
 }
 
-.account-hint-inline {
-  max-width: 480px;
-  margin: 0 auto 16px;
-  font-size: 0.85rem;
-  color: var(--text-dim);
-}
-
-.account-hint-inline a {
-  color: var(--accent-2);
-}
-
 .difficulty-screen {
   padding: 40px 16px;
 }

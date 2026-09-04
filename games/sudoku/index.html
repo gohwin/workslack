@@ -19,15 +19,18 @@
     // firebase-config.js, auth.js를 그대로 가져다 쓴다.
     window.__siteBase = window.__gameBase.replace(/games\/[^/]+\/$/, "");
     document.write('<link rel="stylesheet" href="' + window.__siteBase + 'theme.css">');
+    document.write('<link rel="stylesheet" href="' + window.__siteBase + 'site-header.css">');
     document.write('<link rel="stylesheet" href="' + window.__gameBase + 'style.css">');
   </script>
   <title>스도쿠 - 미니게임 모음</title>
 </head>
 <body>
+  <script>
+    document.write('<script src="' + window.__siteBase + 'site-header.js"><\/script>');
+  </script>
+
   <a class="back-link" href="../../index.html">← 목록으로</a>
   <h1>스도쿠</h1>
-
-  <p id="account-hint-inline" class="account-hint-inline"></p>
 
   <div id="difficulty-screen" class="difficulty-screen">
     <p class="difficulty-prompt">난이도를 선택하세요</p>
