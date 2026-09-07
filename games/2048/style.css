@@ -1,6 +1,12 @@
 body {
   margin: 0;
-  padding: 24px 16px 48px;
+  /* No top padding -- the shared sticky nav bar (site-header.css) already
+     has its own margin-bottom for spacing before this page's content. Top
+     padding here pushed the whole nav bar down by that amount (it's the
+     first element in body), making every game page's header sit visibly
+     lower than the no-padding main page's -- not actually a different
+     header height, just an offset above it. */
+  padding: 0 16px 48px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
