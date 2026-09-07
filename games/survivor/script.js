@@ -256,7 +256,6 @@ let xp = 0;
 let xpToNext = levelXpRequirement(1);
 let levelUpQueue = [];
 let levelUpModalOpen = false;
-let statsModalOpen = false;
 let elapsedSeconds = 0;
 let spawnTimerMs = 0;
 let nextBossAt = BOSS_INTERVAL_SECONDS;
@@ -292,6 +291,8 @@ const timeLabelEl = document.getElementById("time-label");
 const levelLabelEl = document.getElementById("level-label");
 const hpFillEl = document.getElementById("hp-fill");
 const xpFillEl = document.getElementById("xp-fill");
+const hpTextEl = document.getElementById("hp-text");
+const xpTextEl = document.getElementById("xp-text");
 const levelupModalEl = document.getElementById("levelup-modal");
 const levelupOptionsEl = document.getElementById("levelup-options");
 const resultOverlayEl = document.getElementById("result-overlay");
@@ -300,8 +301,7 @@ const resultPointsEl = document.getElementById("result-points");
 const canvasWrapperEl = document.querySelector(".canvas-wrapper");
 const barRowEl = document.querySelector(".bar-row");
 const bossBannerEl = document.getElementById("boss-banner");
-const statsBtn = document.getElementById("stats-btn");
-const statsModalEl = document.getElementById("stats-modal");
+const statsSidebarEl = document.getElementById("stats-sidebar");
 const statsListEl = document.getElementById("stats-list");
 
 renderBestRecord();
@@ -328,7 +328,13 @@ function fitBoardToViewport() {
   // comes out comfortably smaller than the theoretical max instead of
   // brushing right up against the edge of what fits.
   const availableHeight = Math.max(200, window.innerHeight - wrapperTop - bottomPadding - 20);
-  const maxWidthByViewport = Math.min(980, window.innerWidth * 0.94);
+  // The stats sidebar (see .stats-sidebar in style.css) sits beside the
+  // board via flex, only actually shown once the viewport is wide enough --
+  // when it is, its width + the flex gap has to come out of the board's
+  // width budget too, or the two would overflow the viewport together.
+  const sidebarVisible = getComputedStyle(statsSidebarEl).display !== "none";
+  const sidebarReserved = sidebarVisible ? statsSidebarEl.offsetWidth + 24 : 0;
+  const maxWidthByViewport = Math.min(980, window.innerWidth * 0.94 - sidebarReserved);
   const widthByHeight = availableHeight * (CANVAS_W / CANVAS_H);
   const width = Math.max(240, Math.min(maxWidthByViewport, widthByHeight));
 
@@ -392,7 +398,6 @@ function startClass(classKey) {
   xpToNext = levelXpRequirement(1);
   levelUpQueue = [];
   levelUpModalOpen = false;
-  statsModalOpen = false;
   elapsedSeconds = 0;
   spawnTimerMs = 0;
   nextBossAt = BOSS_INTERVAL_SECONDS;
@@ -403,7 +408,6 @@ function startClass(classKey) {
   gameScreenEl.hidden = false;
   resultOverlayEl.hidden = true;
   levelupModalEl.hidden = true;
-  statsModalEl.hidden = true;
   bossBannerEl.hidden = true;
   fitBoardToViewport();
   updateHud();
@@ -499,40 +503,22 @@ function pickLevelUpOption(opt) {
   }
 }
 
-function renderStatsList() {
+// Lives in the sidebar next to the board (see .stats-sidebar in
+// style.css -- only shown when there's actually room beside the canvas),
+// not a button+modal, so it just re-renders every HUD update instead of
+// needing an open/close toggle.
+function renderStatsSidebar() {
   const atkPerSec = (1000 / player.attackCooldownMs).toFixed(2);
   const rows = [
     ["공격력", player.attackDamage],
     ["공격속도", `초당 ${atkPerSec}회`],
     ["이동속도", player.moveSpeed],
-    ["체력", `${Math.round(player.hp)} / ${player.maxHp}`],
     ["체력 재생", player.regenPerSec ? `초당 +${player.regenPerSec}` : "없음"],
     ["흡혈", player.lifesteal ? `${Math.round(player.lifesteal * 100)}%` : "없음"],
   ];
   statsListEl.innerHTML = rows
     .map(([label, value]) => `<li><span>${label}</span><span>${value}</span></li>`)
     .join("");
-}
-
-// Opening this pauses the game (same as a level-up) so reading the numbers
-// doesn't cost you a hit -- only allowed during normal play, not stacked on
-// top of a level-up choice or after the run has already ended.
-function openStatsModal() {
-  if (!running || levelUpModalOpen || statsModalOpen) return;
-  statsModalOpen = true;
-  running = false;
-  if (rafHandle) cancelAnimationFrame(rafHandle);
-  renderStatsList();
-  statsModalEl.hidden = false;
-}
-
-function closeStatsModal() {
-  if (!statsModalOpen) return;
-  statsModalOpen = false;
-  statsModalEl.hidden = true;
-  running = true;
-  lastFrameTime = 0;
-  rafHandle = requestAnimationFrame(frame);
 }
 
 function applyLifesteal(damage) {
@@ -579,6 +565,9 @@ function updateHud() {
   levelLabelEl.textContent = `Lv.${level}`;
   hpFillEl.style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
   xpFillEl.style.width = `${Math.min(100, (xp / xpToNext) * 100)}%`;
+  hpTextEl.textContent = `${Math.max(0, Math.round(player.hp))} / ${player.maxHp}`;
+  xpTextEl.textContent = `${xp} / ${xpToNext}`;
+  renderStatsSidebar();
 }
 
 function frame(ts) {
@@ -800,8 +789,6 @@ document.querySelectorAll(".class-btn").forEach((btn) => {
   });
 });
 document.getElementById("result-close-btn").addEventListener("click", backToClassSelect);
-statsBtn.addEventListener("click", openStatsModal);
-document.getElementById("stats-close-btn").addEventListener("click", closeStatsModal);
 
 const KEY_MAP = {
   ArrowLeft: "left", a: "left", A: "left",
