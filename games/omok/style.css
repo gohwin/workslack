@@ -328,6 +328,18 @@ button:disabled {
   outline-offset: 1px;
 }
 
+/* Glowing ring around whichever stone was placed most recently, so it's
+   obvious at a glance where the opponent (or the bot) just played without
+   having to spot the one new circle among 200+ identical ones. */
+@keyframes omok-last-move-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.9), 0 0 10px 3px rgba(34, 211, 238, 0.55); }
+  50% { box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.6), 0 0 4px 1px rgba(34, 211, 238, 0.3); }
+}
+
+.omok-cell.last-move .stone {
+  animation: omok-last-move-pulse 1.4s ease-in-out infinite;
+}
+
 .omok-result-overlay {
   position: fixed;
   inset: 0;

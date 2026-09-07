@@ -132,6 +132,7 @@ async function createRoom() {
       status: "waiting",
       winner: null,
       winLine: null,
+      lastMove: null,
       moveCount: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -340,6 +341,7 @@ function renderBoard() {
     const cell = boardCellEls[i];
     const value = roomData.board[i];
     cell.classList.toggle("win-cell", winSet.has(i));
+    cell.classList.toggle("last-move", i === roomData.lastMove);
     cell.disabled = value !== 0 || !canPlay;
     if (value === 0) {
       cell.innerHTML = "";
@@ -380,6 +382,7 @@ function startBotGame(difficulty) {
     status: "playing",
     winner: null,
     winLine: null,
+    lastMove: null,
     moveCount: 0,
   };
   renderRoom();
@@ -402,6 +405,7 @@ function applyLocalMove(index, role) {
     status: win || isDraw ? "finished" : "playing",
     winner: win ? role : isDraw ? "draw" : null,
     winLine: win || null,
+    lastMove: index,
   };
   renderRoom();
 }
@@ -555,6 +559,7 @@ async function placeStone(index) {
         board: newBoard,
         turn: myRole === "host" ? "guest" : "host",
         moveCount: data.moveCount + 1,
+        lastMove: index,
         updatedAt: Date.now(),
       };
       if (win) {
@@ -581,6 +586,7 @@ async function rematch() {
       status: "playing",
       winner: null,
       winLine: null,
+      lastMove: null,
       moveCount: 0,
     };
     renderRoom();
@@ -596,6 +602,7 @@ async function rematch() {
     status: "playing",
     winner: null,
     winLine: null,
+    lastMove: null,
     moveCount: 0,
     updatedAt: Date.now(),
   });
