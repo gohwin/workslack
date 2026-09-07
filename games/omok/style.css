@@ -1,0 +1,320 @@
+body {
+  margin: 0;
+  /* No top padding -- the shared sticky nav bar (site-header.css) already
+     has its own margin-bottom for spacing before this page's content. Top
+     padding here pushed the whole nav bar down by that amount (it's the
+     first element in body), making this page's header sit visibly lower
+     than the no-padding main page's. */
+  padding: 0 16px 48px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  text-align: center;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 10px 16px;
+}
+
+button:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-hover);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Shared "centered message" screens (login-required / lobby / waiting) */
+
+.notice-screen,
+.lobby-screen,
+.waiting-screen {
+  max-width: 420px;
+  margin: 48px auto 0;
+  padding: 0 8px;
+}
+
+.notice-title,
+.lobby-title,
+.waiting-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin: 0 0 10px;
+}
+
+.notice-sub,
+.lobby-sub,
+.waiting-sub {
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 0 24px;
+}
+
+.lobby-actions {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.lobby-primary-btn {
+  width: 100%;
+  padding: 14px 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--accent-text);
+}
+
+.lobby-primary-btn:hover {
+  filter: brightness(1.08);
+}
+
+.lobby-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin: 18px 0;
+}
+
+.lobby-divider::before,
+.lobby-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.join-row {
+  display: flex;
+  gap: 8px;
+}
+
+.join-code-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.join-code-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.lobby-error {
+  color: #f87171;
+  font-size: 0.85rem;
+  margin: 14px 0 0;
+}
+
+.room-code-display {
+  font-size: 2.4rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 0;
+  margin: 0 0 18px;
+  color: var(--accent-2);
+}
+
+.waiting-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.waiting-actions button {
+  flex: 1;
+}
+
+.leave-btn {
+  color: var(--text-dim);
+}
+
+/* Game screen */
+
+.omok-game-screen {
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.omok-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 16px;
+}
+
+.player-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.player-chip.is-turn {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 1px var(--accent-2);
+}
+
+.player-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 12ch;
+}
+
+.stone-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.stone-dot-black {
+  background: radial-gradient(circle at 35% 30%, #555, #0a0a0a 70%);
+  border: 1px solid #000;
+}
+
+.stone-dot-white {
+  background: radial-gradient(circle at 35% 30%, #fff, #cfd2d8 70%);
+  border: 1px solid #9a9fab;
+}
+
+.turn-indicator {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.omok-board {
+  display: grid;
+  grid-template-columns: repeat(15, 1fr);
+  width: min(94vw, 560px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  background: #c9a06a;
+  border: 2px solid #8a6a3f;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.omok-cell {
+  position: relative;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset -1px -1px 0 rgba(0, 0, 0, 0.15);
+}
+
+.omok-cell:hover:not(:disabled)::before {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.omok-cell:disabled {
+  cursor: default;
+}
+
+.omok-cell .stone {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.omok-cell .stone.black {
+  background: radial-gradient(circle at 32% 28%, #666, #050505 72%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.omok-cell .stone.white {
+  background: radial-gradient(circle at 32% 28%, #fff, #c6cad2 72%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.omok-cell.win-cell .stone {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 1px;
+}
+
+.omok-result-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+
+.omok-result-overlay[hidden] {
+  display: none;
+}
+
+.omok-result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 24px;
+  max-width: 320px;
+  width: 100%;
+}
+
+.omok-result-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin: 0 0 20px;
+}
+
+.omok-result-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.omok-result-actions button {
+  flex: 1;
+}
+
+#rematch-btn {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--accent-text);
+  font-weight: 700;
+}

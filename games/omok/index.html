@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    // 주소가 끝에 "/" 없이 폴더 경로로 열리면(예: /games/omok) style.css, script.js 같은
+    // 상대경로가 상위 폴더 기준으로 깨진다. <base> 태그로는 브라우저 프리로드 스캐너가
+    // 아직 고쳐지지 않은 원래 경로로 CSS를 먼저 요청해버려 소용없으므로, 태그 자체를
+    // 정적으로 두지 않고 경로를 계산해 직접 써넣는다.
+    window.__gameBase = (function () {
+      var path = location.pathname;
+      if (/\/$/.test(path)) return path;
+      var lastSlash = path.lastIndexOf("/");
+      var lastSegment = path.slice(lastSlash + 1);
+      return lastSegment.indexOf(".") !== -1 ? path.slice(0, lastSlash + 1) : path + "/";
+    })();
+    // 로그인/계정은 사이트 전체 공용이라 games/<id>/ 두 단계 위 사이트 루트에 있는
+    // firebase-config.js, auth.js를 그대로 가져다 쓴다. 오목은 1:1 대전이라 두 플레이어를
+    // 구분할 신원이 꼭 필요해서(로그아웃/새로고침 후에도 "누가 나였는지" 알아야 함),
+    // 다른 게임과 달리 로그인이 필수다.
+    window.__siteBase = window.__gameBase.replace(/games\/[^/]+\/$/, "");
+    // site-header.js writes this into the nav bar's back link + title
+    // instead of the page repeating them as its own back-link/<h1>.
+    window.__gameTitle = "오목";
+    document.write('<link rel="stylesheet" href="' + window.__siteBase + 'theme.css">');
+    document.write('<link rel="stylesheet" href="' + window.__siteBase + 'site-header.css">');
+    document.write('<link rel="stylesheet" href="' + window.__gameBase + 'style.css">');
+  </script>
+  <title>오목 - 미니게임 모음</title>
+</head>
+<body>
+  <script>
+    document.write('<script src="' + window.__siteBase + 'site-header.js"><\/script>');
+  </script>
+
+  <div id="login-required" class="notice-screen" hidden>
+    <p class="notice-title">🔒 로그인이 필요해요</p>
+    <p class="notice-sub">오목은 1대1 대전이라 상대와 나를 구분할 계정이 필요합니다.<br />위 헤더에서 로그인하거나 회원가입 후 다시 시도해주세요.</p>
+  </div>
+
+  <div id="lobby-screen" class="lobby-screen" hidden>
+    <p class="lobby-title">⚫⚪ 오목 1대1</p>
+    <p class="lobby-sub">방을 만들어서 코드나 링크를 상대에게 보내주세요.</p>
+
+    <div class="lobby-actions">
+      <button id="create-room-btn" class="lobby-primary-btn">새 방 만들기</button>
+
+      <div class="lobby-divider"><span>또는</span></div>
+
+      <div class="join-row">
+        <input id="join-code-input" class="join-code-input" type="text" placeholder="방 코드 입력" maxlength="6" autocomplete="off" />
+        <button id="join-room-btn">참가하기</button>
+      </div>
+    </div>
+
+    <p id="lobby-error" class="lobby-error" hidden></p>
+  </div>
+
+  <div id="waiting-screen" class="waiting-screen" hidden>
+    <p class="waiting-title">상대방을 기다리는 중...</p>
+    <p class="waiting-sub">아래 코드나 링크를 상대에게 보내주세요</p>
+    <p id="room-code-display" class="room-code-display"></p>
+    <div class="waiting-actions">
+      <button id="copy-link-btn">링크 복사</button>
+      <button id="copy-code-btn">코드만 복사</button>
+    </div>
+    <button id="leave-waiting-btn" class="leave-btn">방 나가기</button>
+  </div>
+
+  <div id="game-screen" class="omok-game-screen" hidden>
+    <div class="omok-status-bar">
+      <div class="player-chip" id="player-chip-black">
+        <span class="stone-dot stone-dot-black"></span>
+        <span id="black-name" class="player-name"></span>
+      </div>
+      <p id="turn-indicator" class="turn-indicator"></p>
+      <div class="player-chip" id="player-chip-white">
+        <span class="stone-dot stone-dot-white"></span>
+        <span id="white-name" class="player-name"></span>
+      </div>
+    </div>
+
+    <div id="omok-board" class="omok-board"></div>
+
+    <button id="leave-game-btn" class="leave-btn">방 나가기</button>
+
+    <div id="result-overlay" class="omok-result-overlay" hidden>
+      <div class="omok-result-card">
+        <p id="result-title" class="omok-result-title"></p>
+        <div class="omok-result-actions">
+          <button id="rematch-btn">재대결</button>
+          <button id="result-leave-btn">방 나가기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.write('<script src="' + window.__siteBase + 'firebase-config.js"><\/script>');
+  </script>
+  <script>
+    document.write('<script src="' + window.__siteBase + 'auth.js"><\/script>');
+  </script>
+  <script>
+    document.write('<script src="' + window.__gameBase + 'script.js"><\/script>');
+  </script>
+</body>
+</html>

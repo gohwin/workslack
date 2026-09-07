@@ -40,5 +40,12 @@
     "description": "전사 또는 마법사로 몰려오는 적 사이에서 최대한 오래 버티세요",
     "path": "games/survivor/index.html",
     "thumbnail": "games/survivor/thumbnail.svg"
+  },
+  {
+    "id": "omok",
+    "title": "오목",
+    "description": "방을 만들어 친구를 초대하는 1대1 실시간 오목 (로그인 필요)",
+    "path": "games/omok/index.html",
+    "thumbnail": "games/omok/thumbnail.svg"
   }
 ]
