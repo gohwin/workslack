@@ -180,6 +180,61 @@ const LEVEL_UP_OPTIONS = [
   },
 ];
 
+// Only 3 of these 6 show at each level-up, chosen at random (see
+// pickRandomOptions below) -- picking every time used to be "which of the
+// 6 fixed ones do I want", now it's also "which 3 did I even get offered."
+function pickRandomOptions(pool, n) {
+  const copy = [...pool];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, n);
+}
+
+// Boss-kill reward: bigger versions of the usual stat boosts (2 random,
+// picked from this pool) plus one class-specific ability that a normal
+// level-up never offers.
+const BOSS_STAT_OPTIONS = [
+  {
+    id: "boss_damage",
+    label: "공격력 +40%",
+    apply: (p) => { p.attackDamage = Math.round(p.attackDamage * 1.4); },
+  },
+  {
+    id: "boss_health",
+    label: "체력 +40%",
+    apply: (p) => {
+      const inc = Math.round(p.maxHp * 0.4);
+      p.maxHp += inc;
+      p.hp = Math.min(p.maxHp, p.hp + inc);
+    },
+  },
+  {
+    id: "boss_atkspeed",
+    label: "공격속도 +25%",
+    apply: (p) => { p.attackCooldownMs = Math.max(150, Math.round(p.attackCooldownMs * 0.75)); },
+  },
+  {
+    id: "boss_movespeed",
+    label: "이동속도 +25%",
+    apply: (p) => { p.moveSpeed = Math.round(p.moveSpeed * 1.25); },
+  },
+];
+
+const CLASS_SPECIAL_OPTIONS = {
+  warrior: {
+    id: "melee_range",
+    label: "공격 범위 +20%",
+    apply: (p) => { p.meleeRadiusMult = Math.round((p.meleeRadiusMult || 1) * 1.2 * 100) / 100; },
+  },
+  mage: {
+    id: "extra_projectile",
+    label: "투사체 +1개",
+    apply: (p) => { p.projectileCount = (p.projectileCount || 1) + 1; },
+  },
+};
+
 // Points are paused site-wide while more games get added, so nobody has to
 // re-tune every game's point scale each time a new one shows up. Flip this
 // back to true (same everywhere else this flag appears) to resume scoring.
@@ -274,8 +329,8 @@ let meleeEffects = []; // { x, y, radius, ageMs }
 let level = 1;
 let xp = 0;
 let xpToNext = levelXpRequirement(1);
-let levelUpQueue = [];
-let levelUpModalOpen = false;
+let choiceQueue = [];
+let choiceModalOpen = false;
 let elapsedSeconds = 0;
 let spawnTimerMs = 0;
 let nextBossAt = BOSS_INTERVAL_SECONDS;
@@ -314,6 +369,7 @@ const xpFillEl = document.getElementById("xp-fill");
 const hpTextEl = document.getElementById("hp-text");
 const xpTextEl = document.getElementById("xp-text");
 const levelupModalEl = document.getElementById("levelup-modal");
+const levelupTitleEl = document.getElementById("levelup-title");
 const levelupOptionsEl = document.getElementById("levelup-options");
 const resultOverlayEl = document.getElementById("result-overlay");
 const resultSummaryEl = document.getElementById("result-summary");
@@ -407,6 +463,8 @@ function startClass(classKey) {
     invulnMs: 0,
     regenPerSec: 0,
     lifesteal: 0,
+    meleeRadiusMult: 1, // warrior-only boss reward (attack range)
+    projectileCount: 1, // mage-only boss reward (extra projectiles)
   };
   enemies = [];
   projectiles = [];
@@ -416,8 +474,8 @@ function startClass(classKey) {
   level = 1;
   xp = 0;
   xpToNext = levelXpRequirement(1);
-  levelUpQueue = [];
-  levelUpModalOpen = false;
+  choiceQueue = [];
+  choiceModalOpen = false;
   elapsedSeconds = 0;
   spawnTimerMs = 0;
   nextBossAt = BOSS_INTERVAL_SECONDS;
@@ -477,6 +535,10 @@ function killEnemy(enemy) {
     droppedItems.push({ x: enemy.x, y: enemy.y, type });
   }
   sfx.kill(enemy.isBoss);
+  if (enemy.isBoss) {
+    choiceQueue.push({ type: "boss" });
+    if (!choiceModalOpen) openNextChoice();
+  }
 }
 
 function gainXp(amount) {
@@ -485,37 +547,52 @@ function gainXp(amount) {
     xp -= xpToNext;
     level++;
     xpToNext = levelXpRequirement(level);
-    levelUpQueue.push(level);
+    choiceQueue.push({ type: "levelup" });
   }
-  if (levelUpQueue.length && !levelUpModalOpen) openNextLevelUp();
+  if (choiceQueue.length && !choiceModalOpen) openNextChoice();
 }
 
-function openNextLevelUp() {
-  if (!levelUpQueue.length) return;
-  levelUpQueue.shift();
-  levelUpModalOpen = true;
+// Builds the boss-reward option set fresh each time: 2 random picks from
+// BOSS_STAT_OPTIONS (bigger versions of the usual boosts) plus the one
+// ability a normal level-up never offers -- attack range for the warrior,
+// an extra projectile for the mage -- then shuffled together so the
+// class-specific pick isn't always shown last.
+function buildBossRewardOptions() {
+  const picks = pickRandomOptions(BOSS_STAT_OPTIONS, 2);
+  picks.push(CLASS_SPECIAL_OPTIONS[player.classKey]);
+  return pickRandomOptions(picks, picks.length);
+}
+
+function openNextChoice() {
+  if (!choiceQueue.length) return;
+  const choice = choiceQueue.shift();
+  choiceModalOpen = true;
   running = false;
   if (rafHandle) cancelAnimationFrame(rafHandle);
+
+  const isBossReward = choice.type === "boss";
+  levelupTitleEl.textContent = isBossReward ? "🏆 보스 처치 보상!" : "🆙 레벨 업!";
+  const options = isBossReward ? buildBossRewardOptions() : pickRandomOptions(LEVEL_UP_OPTIONS, 3);
   sfx.levelUp();
 
   levelupOptionsEl.innerHTML = "";
-  for (const opt of LEVEL_UP_OPTIONS) {
+  for (const opt of options) {
     const btn = document.createElement("button");
     btn.textContent = opt.label;
-    btn.addEventListener("click", () => pickLevelUpOption(opt));
+    btn.addEventListener("click", () => pickChoiceOption(opt));
     levelupOptionsEl.appendChild(btn);
   }
   levelupModalEl.hidden = false;
 }
 
-function pickLevelUpOption(opt) {
+function pickChoiceOption(opt) {
   opt.apply(player);
   levelupModalEl.hidden = true;
-  levelUpModalOpen = false;
+  choiceModalOpen = false;
   updateHud();
 
-  if (levelUpQueue.length) {
-    openNextLevelUp();
+  if (choiceQueue.length) {
+    openNextChoice();
   } else {
     running = true;
     lastFrameTime = 0;
@@ -536,6 +613,14 @@ function renderStatsSidebar() {
     ["체력 재생", player.regenPerSec ? `초당 +${player.regenPerSec}` : "없음"],
     ["흡혈", player.lifesteal ? `${Math.round(player.lifesteal * 100)}%` : "없음"],
   ];
+  // Class-specific boss-reward stat, only worth showing once it's actually
+  // been picked up at least once.
+  if (player.classKey === "warrior" && player.meleeRadiusMult > 1) {
+    const cfg = CLASS_CONFIG.warrior;
+    rows.push(["공격 범위", Math.round(cfg.meleeRadius * player.meleeRadiusMult)]);
+  } else if (player.classKey === "mage" && player.projectileCount > 1) {
+    rows.push(["투사체 수", player.projectileCount]);
+  }
   statsListEl.innerHTML = rows
     .map(([label, value]) => `<li><span>${label}</span><span>${value}</span></li>`)
     .join("");
@@ -572,9 +657,10 @@ function performAttack() {
   const cfg = CLASS_CONFIG[player.classKey];
   sfx.attack();
   if (cfg.attackType === "melee") {
-    meleeEffects.push({ x: player.x, y: player.y, radius: cfg.meleeRadius, ageMs: 0 });
+    const radius = cfg.meleeRadius * player.meleeRadiusMult;
+    meleeEffects.push({ x: player.x, y: player.y, radius, ageMs: 0 });
     for (const enemy of enemies) {
-      if (dist(player.x, player.y, enemy.x, enemy.y) <= cfg.meleeRadius + enemy.radius) {
+      if (dist(player.x, player.y, enemy.x, enemy.y) <= radius + enemy.radius) {
         enemy.hp -= player.attackDamage;
         applyLifesteal(player.attackDamage);
       }
@@ -583,23 +669,25 @@ function performAttack() {
       if (enemy.hp <= 0) killEnemy(enemy);
     }
   } else {
-    let nearest = null;
-    let nearestDist = Infinity;
-    for (const enemy of enemies) {
-      const d = dist(player.x, player.y, enemy.x, enemy.y);
-      if (d < nearestDist) { nearestDist = d; nearest = enemy; }
+    // Extra projectiles (mage's boss reward) each go to a different nearby
+    // enemy instead of stacking multiple shots on the same target -- sorted
+    // by distance and taking the closest N naturally falls back to the
+    // original single-nearest-target behavior when projectileCount is 1.
+    const targets = [...enemies]
+      .sort((a, b) => dist(player.x, player.y, a.x, a.y) - dist(player.x, player.y, b.x, b.y))
+      .slice(0, player.projectileCount);
+    for (const target of targets) {
+      const dx = target.x - player.x;
+      const dy = target.y - player.y;
+      const len = Math.hypot(dx, dy) || 1;
+      projectiles.push({
+        x: player.x,
+        y: player.y,
+        vx: (dx / len) * cfg.projectileSpeed,
+        vy: (dy / len) * cfg.projectileSpeed,
+        damage: player.attackDamage,
+      });
     }
-    if (!nearest) return;
-    const dx = nearest.x - player.x;
-    const dy = nearest.y - player.y;
-    const len = Math.hypot(dx, dy) || 1;
-    projectiles.push({
-      x: player.x,
-      y: player.y,
-      vx: (dx / len) * cfg.projectileSpeed,
-      vy: (dy / len) * cfg.projectileSpeed,
-      damage: player.attackDamage,
-    });
   }
 }
 
@@ -733,7 +821,7 @@ function frame(ts) {
     endGame();
     return;
   }
-  if (!levelUpModalOpen) rafHandle = requestAnimationFrame(frame);
+  if (!choiceModalOpen) rafHandle = requestAnimationFrame(frame);
 }
 
 function render() {
