@@ -18,17 +18,17 @@ const CLASS_CONFIG = {
   warrior: {
     label: "전사",
     attackType: "melee",
-    attackCooldownMs: 1000,
-    baseAttackDamage: 20,
-    baseMaxHp: 150,
+    attackCooldownMs: 2000, // 초당 0.5회
+    baseAttackDamage: 10,
+    baseMaxHp: 100,
     meleeRadius: 78,
     color: "#f87171",
   },
   mage: {
     label: "마법사",
     attackType: "ranged",
-    attackCooldownMs: 500,
-    baseAttackDamage: 15,
+    attackCooldownMs: 1000, // 초당 1회
+    baseAttackDamage: 10,
     baseMaxHp: 100,
     projectileSpeed: 340,
     color: "#22d3ee",
