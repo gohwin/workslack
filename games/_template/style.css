@@ -7,13 +7,6 @@ body {
   text-align: center;
 }
 
-.back-link {
-  display: inline-block;
-  margin-bottom: 16px;
-  color: var(--accent-2);
-  text-decoration: none;
-}
-
 #game-canvas {
   background: var(--surface);
   border: 1px solid var(--border);

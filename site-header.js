@@ -12,10 +12,25 @@
 // 각 페이지가 다시 계산할 필요 없게 합니다.
 (function () {
   var homeHref = typeof window.__siteBase === "string" ? window.__siteBase + "index.html" : "index.html";
+  // Each game page's <head> script sets window.__gameTitle (see
+  // games/*/index.html) before this file loads, specifically so the back
+  // link + title can be written into the nav bar here instead of the page
+  // repeating them as its own <a class="back-link">/<h1> -- that used to eat
+  // a full extra row of vertical space on every game page, which mattered
+  // enough to fix once survivor's canvas started needing to fit the
+  // viewport height exactly.
+  var gameTitle = typeof window.__gameTitle === "string" ? window.__gameTitle : null;
+  var gameNavHtml = gameTitle
+    ? '<div class="nav-game">' +
+        '<a class="nav-back" href="' + homeHref + '">← 목록</a>' +
+        '<span class="nav-game-title">' + gameTitle + '</span>' +
+      '</div>'
+    : "";
 
   document.write(
     '<div class="nav-bar">' +
       '<a class="brand" href="' + homeHref + '">work<span class="brand-accent">slack</span><span class="brand-tld">.gg</span></a>' +
+      gameNavHtml +
       '<div id="account-area" class="account-area" hidden>' +
         '<div id="account-guest" class="account-row">' +
           '<span class="account-hint">계정을 만들면 완료할 때마다 점수가 쌓여요</span>' +

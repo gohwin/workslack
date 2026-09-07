@@ -16,21 +16,31 @@
       var lastSegment = path.slice(lastSlash + 1);
       return lastSegment.indexOf(".") !== -1 ? path.slice(0, lastSlash + 1) : path + "/";
     })();
-    // 사이트 공용 색상 토큰(다크 테마). games/<id>/ 두 단계 위 루트의 theme.css를
-    // 그대로 가져다 쓰면 새 게임도 자동으로 톤이 맞는다 — style.css에서
-    // var(--bg), var(--surface), var(--accent) 등을 쓰면 된다.
+    // 로그인/계정은 사이트 전체 공용이라 games/<id>/ 두 단계 위 사이트 루트에 있는
+    // firebase-config.js, auth.js를 그대로 가져다 쓴다.
     window.__siteBase = window.__gameBase.replace(/games\/[^/]+\/$/, "");
+    // site-header.js가 이 값을 읽어서 헤더의 뒤로가기 링크 + 제목으로 써준다
+    // (페이지 자기 자신의 back-link/<h1>을 따로 두지 않음). 새 게임 이름으로 바꿀 것.
+    window.__gameTitle = "새 게임";
     document.write('<link rel="stylesheet" href="' + window.__siteBase + 'theme.css">');
+    document.write('<link rel="stylesheet" href="' + window.__siteBase + 'site-header.css">');
     document.write('<link rel="stylesheet" href="' + window.__gameBase + 'style.css">');
   </script>
-  <title>새 게임</title>
+  <title>새 게임 - 미니게임 모음</title>
 </head>
 <body>
-  <a class="back-link" href="../../index.html">← 목록으로</a>
-  <h1>새 게임</h1>
+  <script>
+    document.write('<script src="' + window.__siteBase + 'site-header.js"><\/script>');
+  </script>
 
   <canvas id="game-canvas" width="480" height="360"></canvas>
 
+  <script>
+    document.write('<script src="' + window.__siteBase + 'firebase-config.js"><\/script>');
+  </script>
+  <script>
+    document.write('<script src="' + window.__siteBase + 'auth.js"><\/script>');
+  </script>
   <script>
     document.write('<script src="' + window.__gameBase + 'script.js"><\/script>');
   </script>

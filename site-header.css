@@ -91,6 +91,38 @@
   font-weight: 700;
 }
 
+/* Back link + game title, only present on game pages (see site-header.js) */
+
+.nav-game {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+.nav-back {
+  flex-shrink: 0;
+  color: var(--accent-2);
+  text-decoration: none;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.nav-back:hover {
+  text-decoration: underline;
+}
+
+.nav-game-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .account-area {
   display: flex;
   align-items: center;
@@ -341,6 +373,12 @@
   }
 
   .account-hint {
+    display: none;
+  }
+
+  /* Narrow screens: drop the "workslack.gg" wordmark on game pages so the
+     back link + title (the more useful thing to see there) has room. */
+  .nav-bar:has(.nav-game) .brand {
     display: none;
   }
 }

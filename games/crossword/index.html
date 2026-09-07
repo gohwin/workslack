@@ -18,6 +18,9 @@
     // 로그인/계정은 사이트 전체 공용이라 games/<id>/ 두 단계 위 사이트 루트에 있는
     // firebase-config.js, auth.js를 그대로 가져다 쓴다.
     window.__siteBase = window.__gameBase.replace(/games\/[^/]+\/$/, "");
+    // site-header.js writes this into the nav bar's back link + title
+    // instead of the page repeating them as its own back-link/<h1>.
+    window.__gameTitle = "크로스워드";
     document.write('<link rel="stylesheet" href="' + window.__siteBase + 'theme.css">');
     document.write('<link rel="stylesheet" href="' + window.__siteBase + 'site-header.css">');
     document.write('<link rel="stylesheet" href="' + window.__gameBase + 'style.css">');
@@ -29,8 +32,6 @@
     document.write('<script src="' + window.__siteBase + 'site-header.js"><\/script>');
   </script>
 
-  <a class="back-link" href="../../index.html">← 목록으로</a>
-  <h1>크로스워드</h1>
 
   <p id="loading-msg" class="loading-msg">문제를 만드는 중...</p>
 

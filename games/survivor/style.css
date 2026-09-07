@@ -7,17 +7,6 @@ body {
   text-align: center;
 }
 
-.back-link {
-  display: inline-block;
-  margin-bottom: 8px;
-  color: var(--accent-2);
-  text-decoration: none;
-}
-
-h1 {
-  margin: 0 0 16px;
-}
-
 button {
   font: inherit;
   cursor: pointer;
