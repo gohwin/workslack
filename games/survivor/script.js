@@ -7,7 +7,7 @@
 // of DOM-element-per-thing like the typing game -- redrawing a couple
 // hundred DOM nodes every frame would fall over well before canvas does.
 
-const CANVAS_W = 440;
+const CANVAS_W = 640;
 const CANVAS_H = 440;
 const PLAYER_RADIUS = 14;
 

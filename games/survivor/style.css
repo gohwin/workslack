@@ -88,7 +88,7 @@ button:hover {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-width: 680px;
+  max-width: 990px;
   margin: 0 auto 12px;
 }
 
@@ -115,14 +115,16 @@ button:hover {
 
 .canvas-wrapper {
   position: relative;
-  width: min(680px, 94vw);
+  /* 990px wide at a 640:440 aspect ratio works out to ~680px tall --
+     matches the vertical size from before this went landscape. */
+  width: min(990px, 94vw);
   margin: 0 auto;
 }
 
 #game-canvas {
   width: 100%;
   height: auto;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 640 / 440;
   display: block;
   border: 2px solid var(--cell-border);
   border-radius: 10px;
