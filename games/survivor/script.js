@@ -152,14 +152,14 @@ const LEVEL_UP_OPTIONS = [
   },
   {
     id: "atkspeed",
-    label: "공격속도 +12%",
-    apply: (p) => { p.attackCooldownMs = Math.max(150, Math.round(p.attackCooldownMs * 0.88)); },
+    label: "공격속도 +10%",
+    apply: (p) => { p.attackCooldownMs = Math.max(150, Math.round(p.attackCooldownMs * 0.9)); },
   },
   {
     id: "health",
-    label: "체력 +18%",
+    label: "체력 +15%",
     apply: (p) => {
-      const inc = Math.round(p.maxHp * 0.18);
+      const inc = Math.round(p.maxHp * 0.15);
       p.maxHp += inc;
       p.hp = Math.min(p.maxHp, p.hp + inc);
     },
@@ -172,7 +172,7 @@ const LEVEL_UP_OPTIONS = [
   {
     id: "lifesteal",
     label: "흡혈 +3%",
-    apply: (p) => { p.lifesteal = Math.min(0.45, (p.lifesteal || 0) + 0.03); },
+    apply: (p) => { p.lifesteal = Math.min(0.3, (p.lifesteal || 0) + 0.03); },
   },
 ];
 
@@ -190,28 +190,30 @@ function pickRandomOptions(pool, n) {
   return copy.slice(0, n);
 }
 
-// Boss-kill reward: bigger versions of the usual stat boosts (2 random,
-// picked from this pool) plus one class-specific ability that a normal
-// level-up never offers.
+// Boss-kill reward: exactly double the usual LEVEL_UP_OPTIONS percentages
+// (regen/lifesteal excluded -- they're flat per-pick additions, not
+// something that reads as "doubled"), 2 random picked from this pool,
+// plus one class-specific ability that a normal level-up almost never
+// offers.
 const BOSS_STAT_OPTIONS = [
   {
     id: "boss_damage",
-    label: "공격력 +40%",
-    apply: (p) => { p.attackDamage = Math.round(p.attackDamage * 1.4); },
+    label: "공격력 +30%",
+    apply: (p) => { p.attackDamage = Math.round(p.attackDamage * 1.3); },
   },
   {
     id: "boss_health",
-    label: "체력 +40%",
+    label: "체력 +30%",
     apply: (p) => {
-      const inc = Math.round(p.maxHp * 0.4);
+      const inc = Math.round(p.maxHp * 0.3);
       p.maxHp += inc;
       p.hp = Math.min(p.maxHp, p.hp + inc);
     },
   },
   {
     id: "boss_atkspeed",
-    label: "공격속도 +25%",
-    apply: (p) => { p.attackCooldownMs = Math.max(150, Math.round(p.attackCooldownMs * 0.75)); },
+    label: "공격속도 +20%",
+    apply: (p) => { p.attackCooldownMs = Math.max(150, Math.round(p.attackCooldownMs * 0.8)); },
   },
 ];
 
@@ -252,7 +254,7 @@ function pickClassSpecial() {
 
 // Extremely rare chance for the class-specific special to sneak into a
 // normal level-up's 3 choices too, not just guaranteed boss rewards.
-const RARE_SPECIAL_IN_LEVELUP_CHANCE = 0.04;
+const RARE_SPECIAL_IN_LEVELUP_CHANCE = 0.03;
 
 // Points are paused site-wide while more games get added, so nobody has to
 // re-tune every game's point scale each time a new one shows up. Flip this
