@@ -123,40 +123,42 @@ const DROP_TYPES = [
   },
 ];
 
+// Bumped up across the board -- runs were dying to the general swarm/boss
+// pressure well before stacking enough levels to actually feel stronger.
 const LEVEL_UP_OPTIONS = [
   {
     id: "damage",
-    label: "공격력 +20%",
-    apply: (p) => { p.attackDamage = Math.round(p.attackDamage * 1.2); },
+    label: "공격력 +35%",
+    apply: (p) => { p.attackDamage = Math.round(p.attackDamage * 1.35); },
   },
   {
     id: "atkspeed",
-    label: "공격속도 +15%",
-    apply: (p) => { p.attackCooldownMs = Math.max(150, Math.round(p.attackCooldownMs * 0.85)); },
+    label: "공격속도 +22%",
+    apply: (p) => { p.attackCooldownMs = Math.max(150, Math.round(p.attackCooldownMs * 0.78)); },
   },
   {
     id: "movespeed",
-    label: "이동속도 +10%",
-    apply: (p) => { p.moveSpeed = Math.round(p.moveSpeed * 1.1); },
+    label: "이동속도 +18%",
+    apply: (p) => { p.moveSpeed = Math.round(p.moveSpeed * 1.18); },
   },
   {
     id: "health",
-    label: "체력 +20%",
+    label: "체력 +35%",
     apply: (p) => {
-      const inc = Math.round(p.maxHp * 0.2);
+      const inc = Math.round(p.maxHp * 0.35);
       p.maxHp += inc;
       p.hp = Math.min(p.maxHp, p.hp + inc);
     },
   },
   {
     id: "regen",
-    label: "체력 재생 +1/초",
-    apply: (p) => { p.regenPerSec = (p.regenPerSec || 0) + 1; },
+    label: "체력 재생 +2/초",
+    apply: (p) => { p.regenPerSec = (p.regenPerSec || 0) + 2; },
   },
   {
     id: "lifesteal",
-    label: "흡혈 +10%",
-    apply: (p) => { p.lifesteal = Math.min(0.5, (p.lifesteal || 0) + 0.1); },
+    label: "흡혈 +15%",
+    apply: (p) => { p.lifesteal = Math.min(0.6, (p.lifesteal || 0) + 0.15); },
   },
 ];
 
@@ -601,11 +603,16 @@ function frame(ts) {
     spawnTimerMs = 0;
     if (enemies.length < MAX_ALIVE_ENEMIES) spawnEnemy();
   }
-  if (elapsedSeconds >= nextBossAt) {
+  // If the previous boss is still alive when the next one is due, wait --
+  // otherwise two (or more) end up on screen at once, which is less "epic
+  // fight" and more "instant unwinnable pile-up." The timer only advances
+  // once a boss actually spawns, so it doesn't fire in a rapid catch-up
+  // burst either.
+  if (elapsedSeconds >= nextBossAt && !enemies.some((e) => e.isBoss)) {
     spawnEnemy("boss");
     showBossBanner();
     sfx.boss();
-    nextBossAt += BOSS_INTERVAL_SECONDS;
+    nextBossAt = elapsedSeconds + BOSS_INTERVAL_SECONDS;
   }
 
   // enemies chase the player and hurt on contact
