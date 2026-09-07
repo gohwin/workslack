@@ -36,17 +36,19 @@
 
   <div id="login-required" class="notice-screen" hidden>
     <p class="notice-title">🔒 로그인이 필요해요</p>
-    <p class="notice-sub">오목은 1대1 대전이라 상대와 나를 구분할 계정이 필요합니다.<br />위 헤더에서 로그인하거나 회원가입 후 다시 시도해주세요.</p>
+    <p class="notice-sub">공유된 대전 링크에 참가하려면 계정이 필요합니다 (상대와 나를 구분할 신원이 필요해요).<br />위 헤더에서 로그인하거나 회원가입 후 다시 시도해주세요.</p>
   </div>
 
   <div id="lobby-screen" class="lobby-screen" hidden>
-    <p class="lobby-title">⚫⚪ 오목 1대1</p>
-    <p class="lobby-sub">방을 만들어서 코드나 링크를 상대에게 보내주세요.</p>
+    <p class="lobby-title">⚫⚪ 오목</p>
+    <p class="lobby-sub">봇과 바로 두거나, 방을 만들어서 친구와 1대1로 즐기세요.</p>
 
     <div class="lobby-actions">
-      <button id="create-room-btn" class="lobby-primary-btn">새 방 만들기</button>
+      <button id="bot-game-btn" class="lobby-primary-btn">🤖 봇과 대전</button>
 
-      <div class="lobby-divider"><span>또는</span></div>
+      <div class="lobby-divider"><span>친구와 1대1 (로그인 필요)</span></div>
+
+      <button id="create-room-btn">새 방 만들기</button>
 
       <div class="join-row">
         <input id="join-code-input" class="join-code-input" type="text" placeholder="방 코드 입력" maxlength="6" autocomplete="off" />

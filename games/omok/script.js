@@ -1,10 +1,11 @@
 // Login/signup/logout and the shared `currentUser` state live in the
 // site-wide ../../auth.js (loaded via a <script> tag before this file, so
 // its top-level declarations are plain globals here too, same as
-// ../../firebase-config.js's window.__firebaseConfig). Unlike every other
-// game on the site, Omok requires login -- a 1v1 match needs a stable way
-// to tell "which of the two players is me" apart, including across a
-// refresh, and a guest identity doesn't survive that.
+// ../../firebase-config.js's window.__firebaseConfig). Only the 1v1 room
+// modes need login -- a real match needs a stable way to tell "which of
+// the two players is me" apart, including across a refresh, and a guest
+// identity doesn't survive that. Bot mode is fully local (no Firestore at
+// all) so it works for guests too.
 
 const BOARD_SIZE = 15;
 const WIN_LENGTH = 5;
@@ -18,6 +19,7 @@ const lobbyScreenEl = document.getElementById("lobby-screen");
 const waitingScreenEl = document.getElementById("waiting-screen");
 const gameScreenEl = document.getElementById("game-screen");
 
+const botGameBtn = document.getElementById("bot-game-btn");
 const createRoomBtn = document.getElementById("create-room-btn");
 const joinCodeInputEl = document.getElementById("join-code-input");
 const joinRoomBtn = document.getElementById("join-room-btn");
@@ -55,6 +57,7 @@ let currentRoomCode = null;
 let myRole = null; // "host" | "guest" | null
 let roomData = null;
 let unsubscribeRoom = null;
+let isBotGame = false;
 
 function generateRoomCode() {
   let code = "";
@@ -192,6 +195,9 @@ async function joinRoom(rawCode) {
 function enterRoom(code, role) {
   currentRoomCode = code;
   myRole = role;
+  isBotGame = false;
+  leaveGameBtn.textContent = "방 나가기";
+  resultLeaveBtn.textContent = "방 나가기";
   const url = new URL(window.location.href);
   url.searchParams.set("room", code);
   history.replaceState(null, "", url);
@@ -227,6 +233,7 @@ function leaveRoom() {
   currentRoomCode = null;
   myRole = null;
   roomData = null;
+  isBotGame = false;
   omokBoardEl.innerHTML = "";
   boardCellEls = null;
   const url = new URL(window.location.href);
@@ -351,16 +358,157 @@ function showResult() {
   resultOverlayEl.hidden = false;
 }
 
+function startBotGame() {
+  isBotGame = true;
+  currentRoomCode = null;
+  myRole = "host"; // the human is always black and goes first
+  leaveGameBtn.textContent = "나가기";
+  resultLeaveBtn.textContent = "나가기";
+  const url = new URL(window.location.href);
+  url.searchParams.delete("room");
+  history.replaceState(null, "", url);
+  roomData = {
+    hostUid: "local-player",
+    hostNickname: currentUser ? currentUser.nickname : "나",
+    guestUid: "bot",
+    guestNickname: "🤖 봇",
+    board: emptyBoard(),
+    turn: "host",
+    status: "playing",
+    winner: null,
+    winLine: null,
+    moveCount: 0,
+  };
+  renderRoom();
+}
+
+// Applies a move straight to the local roomData object and re-renders --
+// used for bot games only, where there's no Firestore doc to write to and
+// no second client to race against.
+function applyLocalMove(index, role) {
+  const value = role === "host" ? 1 : 2;
+  const newBoard = [...roomData.board];
+  newBoard[index] = value;
+  const win = checkWin(newBoard, index, value);
+  const isDraw = !win && newBoard.every((v) => v !== 0);
+  roomData = {
+    ...roomData,
+    board: newBoard,
+    turn: role === "host" ? "guest" : "host",
+    moveCount: roomData.moveCount + 1,
+    status: win || isDraw ? "finished" : "playing",
+    winner: win ? role : isDraw ? "draw" : null,
+    winLine: win || null,
+  };
+  renderRoom();
+}
+
+// Rough (no lookahead/minimax -- just single-move pattern scoring) but
+// genuinely non-trivial opponent: always takes an immediate win, always
+// blocks an immediate opponent win, and otherwise scores every empty cell
+// by how strong a line it would extend for either side (open ends count
+// for more than blocked ones, since an open three threatens to become an
+// open four next turn) plus a small centrality nudge for early-game ties.
+const BOT_VALUE = 2;
+const HUMAN_VALUE = 1;
+
+function patternScore(runLength, openEnds) {
+  if (runLength >= 5) return 100000;
+  if (runLength === 4) return openEnds === 2 ? 10000 : openEnds === 1 ? 1000 : 0;
+  if (runLength === 3) return openEnds === 2 ? 800 : openEnds === 1 ? 150 : 0;
+  if (runLength === 2) return openEnds === 2 ? 60 : openEnds === 1 ? 15 : 0;
+  return openEnds === 2 ? 5 : 1; // runLength === 1
+}
+
+function lineScoreAt(board, index, value) {
+  const r0 = Math.floor(index / BOARD_SIZE);
+  const c0 = index % BOARD_SIZE;
+  const directions = [
+    [0, 1],
+    [1, 0],
+    [1, 1],
+    [1, -1],
+  ];
+  let total = 0;
+  for (const [dr, dc] of directions) {
+    let runLength = 1;
+    let openEnds = 0;
+    for (const sign of [1, -1]) {
+      let r = r0 + dr * sign;
+      let c = c0 + dc * sign;
+      while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r * BOARD_SIZE + c] === value) {
+        runLength++;
+        r += dr * sign;
+        c += dc * sign;
+      }
+      if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r * BOARD_SIZE + c] === 0) openEnds++;
+    }
+    total += patternScore(runLength, openEnds);
+  }
+  return total;
+}
+
+function pickBotMove(board) {
+  const emptyIndices = [];
+  for (let i = 0; i < board.length; i++) if (board[i] === 0) emptyIndices.push(i);
+  if (emptyIndices.length === 0) return null;
+  if (emptyIndices.length === board.length) return Math.floor(board.length / 2); // empty board -> take the center
+
+  let bestScore = -Infinity;
+  let bestMoves = [];
+  const center = (BOARD_SIZE - 1) / 2;
+  for (const i of emptyIndices) {
+    const winBoard = [...board];
+    winBoard[i] = BOT_VALUE;
+    if (checkWin(winBoard, i, BOT_VALUE)) return i; // take a guaranteed win immediately
+
+    const blockBoard = [...board];
+    blockBoard[i] = HUMAN_VALUE;
+    const mustBlock = !!checkWin(blockBoard, i, HUMAN_VALUE);
+
+    let score = lineScoreAt(board, i, BOT_VALUE) + lineScoreAt(board, i, HUMAN_VALUE) * 0.9;
+    if (mustBlock) score += 50000;
+    const r = Math.floor(i / BOARD_SIZE);
+    const c = i % BOARD_SIZE;
+    score += (1 - (Math.abs(r - center) + Math.abs(c - center)) / BOARD_SIZE) * 2;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMoves = [i];
+    } else if (score === bestScore) {
+      bestMoves.push(i);
+    }
+  }
+  return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+}
+
+const BOT_THINK_DELAY_MS = 500;
+
+function botTakeTurn() {
+  if (!isBotGame || !roomData || roomData.status !== "playing" || roomData.turn !== "guest") return;
+  const move = pickBotMove(roomData.board);
+  if (move === null) return;
+  applyLocalMove(move, "guest");
+}
+
 // Wrapped in a transaction against the live server doc (not the locally
 // cached roomData) so two clients racing on the same cell -- e.g. one
 // player's snapshot listener is a beat behind after the opponent's last
 // move -- can't both write a stone into it; the loser of the race just
 // finds board[index] already taken inside the transaction and aborts.
+// Bot games skip Firestore entirely and just mutate roomData locally.
 async function placeStone(index) {
-  if (!roomData || !currentRoomCode) return;
+  if (!roomData) return;
   if (roomData.status !== "playing") return;
   if (roomData.turn !== myRole) return;
   if (roomData.board[index] !== 0) return;
+
+  if (isBotGame) {
+    applyLocalMove(index, myRole);
+    if (roomData.status === "playing") setTimeout(botTakeTurn, BOT_THINK_DELAY_MS);
+    return;
+  }
+  if (!currentRoomCode) return;
 
   const fsHandle = await ensureFirestore();
   if (!fsHandle) return;
@@ -404,6 +552,19 @@ async function placeStone(index) {
 }
 
 async function rematch() {
+  if (isBotGame) {
+    roomData = {
+      ...roomData,
+      board: emptyBoard(),
+      turn: "host",
+      status: "playing",
+      winner: null,
+      winLine: null,
+      moveCount: 0,
+    };
+    renderRoom();
+    return;
+  }
   if (!currentRoomCode) return;
   const fsHandle = await ensureFirestore();
   if (!fsHandle) return;
@@ -419,10 +580,29 @@ async function rematch() {
   });
 }
 
-createRoomBtn.addEventListener("click", createRoom);
-joinRoomBtn.addEventListener("click", () => joinRoom(joinCodeInputEl.value));
+function showLobbyError(message) {
+  lobbyErrorEl.textContent = message;
+  lobbyErrorEl.hidden = false;
+}
+
+botGameBtn.addEventListener("click", startBotGame);
+
+createRoomBtn.addEventListener("click", () => {
+  if (!currentUser) {
+    showLobbyError("로그인이 필요해요. 위 헤더에서 로그인해주세요.");
+    return;
+  }
+  createRoom();
+});
+joinRoomBtn.addEventListener("click", () => {
+  if (!currentUser) {
+    showLobbyError("로그인이 필요해요. 위 헤더에서 로그인해주세요.");
+    return;
+  }
+  joinRoom(joinCodeInputEl.value);
+});
 joinCodeInputEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") joinRoom(joinCodeInputEl.value);
+  if (e.key === "Enter") joinRoomBtn.click();
 });
 leaveWaitingBtn.addEventListener("click", leaveRoom);
 leaveGameBtn.addEventListener("click", leaveRoom);
@@ -459,22 +639,19 @@ copyCodeBtn.addEventListener("click", async () => {
 
 // auth.js calls this once login state is known (both "logged in" and
 // "logged out" count as known) and again on every subsequent login/logout.
-// A room already joined (currentRoomCode set) is left alone here -- this
-// only decides the *initial* screen / auto-join from a shared link.
+// A bot game or a room already joined is left alone here -- this only
+// decides the *initial* screen / auto-join from a shared link, and only
+// the room-based 1v1 modes actually need login (bot mode works logged out).
 function onAccountReady() {
+  if (isBotGame || currentRoomCode) return;
+  const roomParam = new URLSearchParams(window.location.search).get("room");
   if (!currentUser) {
-    if (unsubscribeRoom) {
-      unsubscribeRoom();
-      unsubscribeRoom = null;
-    }
-    currentRoomCode = null;
-    myRole = null;
-    roomData = null;
-    showScreen("login-required");
+    // Only a shared-room link actually requires login right now -- the
+    // default (no room param) screen is the lobby regardless, since bot
+    // mode needs no account at all.
+    if (roomParam) showScreen("login-required");
     return;
   }
-  if (currentRoomCode) return;
-  const roomParam = new URLSearchParams(window.location.search).get("room");
   if (roomParam) {
     joinRoom(roomParam);
   } else {
@@ -482,9 +659,8 @@ function onAccountReady() {
   }
 }
 
-// If Firebase isn't configured at all, onAccountReady() never fires
-// (auth.js's isFirebaseConfigured() guard) -- fall back to the
-// login-required screen so the page doesn't sit blank.
-if (!window.__firebaseConfig || (window.__firebaseConfig.apiKey || "").startsWith("YOUR_")) {
-  showScreen("login-required");
-}
+// Shown immediately, before Firebase/auth even finishes loading (or at
+// all, if it's not configured) -- bot mode needs neither, so there's no
+// reason to make the player wait or see a blank page for it. onAccountReady()
+// (once auth resolves) only overrides this for the shared-room-link case.
+showScreen("lobby");

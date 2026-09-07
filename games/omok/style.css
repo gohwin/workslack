@@ -96,6 +96,11 @@ button:disabled {
   background: var(--border);
 }
 
+#create-room-btn {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
 .join-row {
   display: flex;
   gap: 8px;
