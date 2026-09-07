@@ -134,6 +134,12 @@ button:hover {
   font-weight: 700;
 }
 
+.stats-sidebar-title--enemy {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
 .stats-list {
   list-style: none;
   margin: 0;
@@ -157,9 +163,15 @@ button:hover {
   border-bottom: none;
 }
 
+.stats-list li span:first-child {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .stats-list li span:last-child {
   color: var(--text);
   font-weight: 700;
+  text-align: right;
 }
 
 .bar-row {

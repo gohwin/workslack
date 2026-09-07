@@ -11,25 +11,30 @@ const CANVAS_W = 640;
 const CANVAS_H = 440;
 const PLAYER_RADIUS = 14;
 
+// Each class leans into a different identity via its base stats instead of
+// starting identical and only diverging through level-ups: the warrior
+// hits hard and slow, the mage hits light and fast.
 const CLASS_CONFIG = {
   warrior: {
     label: "전사",
     attackType: "melee",
     attackCooldownMs: 700,
+    baseAttackDamage: 16,
     meleeRadius: 78,
     color: "#f87171",
   },
   mage: {
     label: "마법사",
     attackType: "ranged",
-    attackCooldownMs: 650,
+    attackCooldownMs: 480,
+    baseAttackDamage: 8,
     projectileSpeed: 340,
     color: "#22d3ee",
   },
 };
 
-const BASE_MOVE_SPEED = 160; // px/s
-const BASE_ATTACK_DAMAGE = 10;
+const BASE_MOVE_SPEED = 170; // px/s
+const BASE_MAX_HP = 120;
 
 const ENEMY_BASE_HP = 20;
 const ENEMY_BASE_SPEED = 55; // px/s
@@ -119,46 +124,54 @@ const DROP_TYPES = [
     id: "bomb",
     emoji: "💣",
     color: "#f97316",
-    apply: () => { for (const e of [...enemies]) killEnemy(e); },
+    // Bosses are immune -- otherwise the fight meant to be the run's one
+    // real test just evaporates the instant a bomb happens to drop.
+    apply: () => { for (const e of [...enemies]) { if (!e.isBoss) killEnemy(e); } },
   },
 ];
 
-// Bumped up across the board -- runs were dying to the general swarm/boss
-// pressure well before stacking enough levels to actually feel stronger.
+// These are multiplicative and stack every level, so they compound
+// exponentially over a long run (1.35x damage 15 times over is ~90x, not
+// 15x) -- the previous +35%/+22% pass made it trivial to hit absurd
+// numbers (attackDamage 381 by level 20) well before the enemy scaling
+// (linear in time) could keep up. Pulled the percentages back down hard
+// and moved the power into higher base stats instead (see
+// CLASS_CONFIG.baseAttackDamage/BASE_MOVE_SPEED/BASE_MAX_HP above), which
+// only ever apply once and can't snowball the same way.
 const LEVEL_UP_OPTIONS = [
   {
     id: "damage",
-    label: "공격력 +35%",
-    apply: (p) => { p.attackDamage = Math.round(p.attackDamage * 1.35); },
+    label: "공격력 +15%",
+    apply: (p) => { p.attackDamage = Math.round(p.attackDamage * 1.15); },
   },
   {
     id: "atkspeed",
-    label: "공격속도 +22%",
-    apply: (p) => { p.attackCooldownMs = Math.max(150, Math.round(p.attackCooldownMs * 0.78)); },
+    label: "공격속도 +12%",
+    apply: (p) => { p.attackCooldownMs = Math.max(150, Math.round(p.attackCooldownMs * 0.88)); },
   },
   {
     id: "movespeed",
-    label: "이동속도 +18%",
-    apply: (p) => { p.moveSpeed = Math.round(p.moveSpeed * 1.18); },
+    label: "이동속도 +8%",
+    apply: (p) => { p.moveSpeed = Math.round(p.moveSpeed * 1.08); },
   },
   {
     id: "health",
-    label: "체력 +35%",
+    label: "체력 +18%",
     apply: (p) => {
-      const inc = Math.round(p.maxHp * 0.35);
+      const inc = Math.round(p.maxHp * 0.18);
       p.maxHp += inc;
       p.hp = Math.min(p.maxHp, p.hp + inc);
     },
   },
   {
     id: "regen",
-    label: "체력 재생 +2/초",
-    apply: (p) => { p.regenPerSec = (p.regenPerSec || 0) + 2; },
+    label: "체력 재생 +1/초",
+    apply: (p) => { p.regenPerSec = (p.regenPerSec || 0) + 1; },
   },
   {
     id: "lifesteal",
-    label: "흡혈 +15%",
-    apply: (p) => { p.lifesteal = Math.min(0.6, (p.lifesteal || 0) + 0.15); },
+    label: "흡혈 +8%",
+    apply: (p) => { p.lifesteal = Math.min(0.45, (p.lifesteal || 0) + 0.08); },
   },
 ];
 
@@ -305,6 +318,7 @@ const barRowEl = document.querySelector(".bar-row");
 const bossBannerEl = document.getElementById("boss-banner");
 const statsSidebarEl = document.getElementById("stats-sidebar");
 const statsListEl = document.getElementById("stats-list");
+const enemyStatsListEl = document.getElementById("enemy-stats-list");
 
 renderBestRecord();
 
@@ -379,10 +393,10 @@ function startClass(classKey) {
     classKey,
     x: CANVAS_W / 2,
     y: CANVAS_H / 2,
-    hp: 100,
-    maxHp: 100,
+    hp: BASE_MAX_HP,
+    maxHp: BASE_MAX_HP,
     moveSpeed: BASE_MOVE_SPEED,
-    attackDamage: BASE_ATTACK_DAMAGE,
+    attackDamage: cfg.baseAttackDamage,
     attackCooldownMs: cfg.attackCooldownMs,
     attackTimerMs: 0,
     invulnMs: 0,
@@ -523,6 +537,29 @@ function renderStatsSidebar() {
     .join("");
 }
 
+// Mirrors renderStatsSidebar() but for what the enemies are currently doing
+// -- everything here is the same math spawnEnemy()/currentSpawnIntervalMs()
+// use, just surfaced live so "it's escalating" isn't only felt, it's seen.
+function renderEnemyStatsSidebar() {
+  const baseHp = Math.round(ENEMY_BASE_HP + elapsedSeconds * ENEMY_HP_PER_SEC);
+  const baseSpeed = Math.round(Math.min(ENEMY_SPEED_CAP, ENEMY_BASE_SPEED + elapsedSeconds * ENEMY_SPEED_PER_SEC));
+  const spawnSec = (currentSpawnIntervalMs() / 1000).toFixed(2);
+  const variety = elapsedSeconds < 20 ? "일반" : elapsedSeconds < 45 ? "일반 + 스피드형" : "일반 + 스피드형 + 브루트";
+  const bossAlive = enemies.some((e) => e.isBoss);
+  const bossStatus = bossAlive ? "전투 중!" : `${Math.max(0, Math.ceil(nextBossAt - elapsedSeconds))}초 후`;
+
+  const rows = [
+    ["기본 체력", baseHp],
+    ["기본 이동속도", baseSpeed],
+    ["스폰 간격", `${spawnSec}초`],
+    ["종류", variety],
+    ["다음 보스", bossStatus],
+  ];
+  enemyStatsListEl.innerHTML = rows
+    .map(([label, value]) => `<li><span>${label}</span><span>${value}</span></li>`)
+    .join("");
+}
+
 function applyLifesteal(damage) {
   if (player.lifesteal) player.hp = Math.min(player.maxHp, player.hp + damage * player.lifesteal);
 }
@@ -570,6 +607,7 @@ function updateHud() {
   hpTextEl.textContent = `${Math.max(0, Math.round(player.hp))} / ${player.maxHp}`;
   xpTextEl.textContent = `${xp} / ${xpToNext}`;
   renderStatsSidebar();
+  renderEnemyStatsSidebar();
 }
 
 function frame(ts) {
