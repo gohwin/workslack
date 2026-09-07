@@ -26,13 +26,19 @@ const MAX_POINTS = 900;
 // back to true (same everywhere else this flag appears) to resume scoring.
 const POINTS_ENABLED = false;
 
+// Each of these gets its own one-time banner the first time a tile of that
+// value appears, not just 2048 -- reaching 4096/8192 is a real milestone in
+// its own right and shouldn't go unremarked just because the game already
+// congratulated you once.
+const MILESTONES = [2048, 4096, 8192, 16384, 32768];
+
 let tiles = []; // { id, r, c, value }
 let tileElements = new Map(); // id -> DOM element
 let nextTileId = 1;
 let cellSize = 0;
 let score = 0;
 let bestScore = loadBestScore();
-let won = false;
+let announcedMilestones = new Set();
 let gameOverFlag = false;
 let animating = false;
 let touchStartX = 0;
@@ -43,6 +49,7 @@ const tileLayerEl = document.getElementById("tile-layer");
 const scoreLabelEl = document.getElementById("score-label");
 const bestLabelEl = document.getElementById("best-label");
 const winBannerEl = document.getElementById("win-banner");
+const winBannerTextEl = document.getElementById("win-banner-text");
 const resultOverlayEl = document.getElementById("result-overlay");
 const resultScoreEl = document.getElementById("result-score");
 const resultPointsEl = document.getElementById("result-points");
@@ -246,9 +253,13 @@ function move(direction) {
     updateHud();
     animating = false;
 
-    if (!won && tiles.some((t) => t.value === 2048)) {
-      won = true;
-      winBannerEl.hidden = false;
+    for (const milestone of MILESTONES) {
+      if (!announcedMilestones.has(milestone) && tiles.some((t) => t.value === milestone)) {
+        announcedMilestones.add(milestone);
+        winBannerTextEl.textContent = `🎉 ${milestone} 타일을 만들었어요!`;
+        winBannerEl.hidden = false;
+        break; // one banner at a time -- any further milestone already on the board gets caught on the next move
+      }
     }
     if (!hasMovesLeft(buildValueGrid())) {
       endGame();
@@ -280,7 +291,7 @@ function startNewGame() {
   tiles = [];
   nextTileId = 1;
   score = 0;
-  won = false;
+  announcedMilestones = new Set();
   gameOverFlag = false;
   animating = false;
   winBannerEl.hidden = true;
