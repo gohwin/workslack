@@ -334,6 +334,17 @@ button:hover {
   padding: 10px 0;
 }
 
+/* Class-specific specials (attack range / extra projectile) get their own
+   gold look so they read as a rarer pick than a normal purple/cyan stat
+   button, whether they show up via a boss reward or the rare level-up
+   chance. Needs the extra `.levelup-options` prefix to out-specificity
+   `.levelup-options button` above (two class-level selectors beats one,
+   regardless of source order). */
+.levelup-options .choice-option-special {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  color: #2b1a03;
+}
+
 #result-summary {
   color: var(--text-muted);
   margin: 0 0 4px;

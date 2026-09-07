@@ -155,11 +155,6 @@ const LEVEL_UP_OPTIONS = [
     apply: (p) => { p.attackCooldownMs = Math.max(150, Math.round(p.attackCooldownMs * 0.88)); },
   },
   {
-    id: "movespeed",
-    label: "이동속도 +8%",
-    apply: (p) => { p.moveSpeed = Math.round(p.moveSpeed * 1.08); },
-  },
-  {
     id: "health",
     label: "체력 +18%",
     apply: (p) => {
@@ -180,9 +175,11 @@ const LEVEL_UP_OPTIONS = [
   },
 ];
 
-// Only 3 of these 6 show at each level-up, chosen at random (see
+// Only 3 of these show at each level-up, chosen at random (see
 // pickRandomOptions below) -- picking every time used to be "which of the
-// 6 fixed ones do I want", now it's also "which 3 did I even get offered."
+// fixed ones do I want", now it's also "which 3 did I even get offered."
+// (Move speed used to be one of these but got dropped entirely -- the map
+// is small enough that it never felt like it mattered.)
 function pickRandomOptions(pool, n) {
   const copy = [...pool];
   for (let i = copy.length - 1; i > 0; i--) {
@@ -215,25 +212,29 @@ const BOSS_STAT_OPTIONS = [
     label: "공격속도 +25%",
     apply: (p) => { p.attackCooldownMs = Math.max(150, Math.round(p.attackCooldownMs * 0.75)); },
   },
-  {
-    id: "boss_movespeed",
-    label: "이동속도 +25%",
-    apply: (p) => { p.moveSpeed = Math.round(p.moveSpeed * 1.25); },
-  },
 ];
 
+// `special: true` marks these for the gold button styling in
+// openNextChoice() below -- they're rarer/more impactful than a normal
+// stat tick, so they shouldn't look like just another purple button.
 const CLASS_SPECIAL_OPTIONS = {
   warrior: {
     id: "melee_range",
     label: "공격 범위 +20%",
+    special: true,
     apply: (p) => { p.meleeRadiusMult = Math.round((p.meleeRadiusMult || 1) * 1.2 * 100) / 100; },
   },
   mage: {
     id: "extra_projectile",
     label: "투사체 +1개",
+    special: true,
     apply: (p) => { p.projectileCount = (p.projectileCount || 1) + 1; },
   },
 };
+
+// Extremely rare chance for the class-specific special to sneak into a
+// normal level-up's 3 choices too, not just guaranteed boss rewards.
+const RARE_SPECIAL_IN_LEVELUP_CHANCE = 0.04;
 
 // Points are paused site-wide while more games get added, so nobody has to
 // re-tune every game's point scale each time a new one shows up. Flip this
@@ -572,17 +573,30 @@ function openNextChoice() {
 
   const isBossReward = choice.type === "boss";
   levelupTitleEl.textContent = isBossReward ? "🏆 보스 처치 보상!" : "🆙 레벨 업!";
-  const options = isBossReward ? buildBossRewardOptions() : pickRandomOptions(LEVEL_UP_OPTIONS, 3);
+  const options = isBossReward ? buildBossRewardOptions() : buildLevelUpOptions();
   sfx.levelUp();
 
   levelupOptionsEl.innerHTML = "";
   for (const opt of options) {
     const btn = document.createElement("button");
     btn.textContent = opt.label;
+    if (opt.special) btn.classList.add("choice-option-special");
     btn.addEventListener("click", () => pickChoiceOption(opt));
     levelupOptionsEl.appendChild(btn);
   }
   levelupModalEl.hidden = false;
+}
+
+// Normally just 3 random picks from LEVEL_UP_OPTIONS, but there's a small
+// chance the class-specific special (otherwise only ever guaranteed on a
+// boss kill) sneaks in as one of the 3 instead.
+function buildLevelUpOptions() {
+  if (Math.random() < RARE_SPECIAL_IN_LEVELUP_CHANCE) {
+    const picks = pickRandomOptions(LEVEL_UP_OPTIONS, 2);
+    picks.push(CLASS_SPECIAL_OPTIONS[player.classKey]);
+    return pickRandomOptions(picks, picks.length);
+  }
+  return pickRandomOptions(LEVEL_UP_OPTIONS, 3);
 }
 
 function pickChoiceOption(opt) {
