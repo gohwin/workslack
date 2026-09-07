@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    // 주소가 끝에 "/" 없이 폴더 경로로 열리면(예: /games/survivor) style.css, script.js 같은
+    // 상대경로가 상위 폴더 기준으로 깨진다. <base> 태그로는 브라우저 프리로드 스캐너가
+    // 아직 고쳐지지 않은 원래 경로로 CSS를 먼저 요청해버려 소용없으므로, 태그 자체를
+    // 정적으로 두지 않고 경로를 계산해 직접 써넣는다.
+    window.__gameBase = (function () {
+      var path = location.pathname;
+      if (/\/$/.test(path)) return path;
+      var lastSlash = path.lastIndexOf("/");
+      var lastSegment = path.slice(lastSlash + 1);
+      return lastSegment.indexOf(".") !== -1 ? path.slice(0, lastSlash + 1) : path + "/";
+    })();
+    // 로그인/계정은 사이트 전체 공용이라 games/<id>/ 두 단계 위 사이트 루트에 있는
+    // firebase-config.js, auth.js를 그대로 가져다 쓴다.
+    window.__siteBase = window.__gameBase.replace(/games\/[^/]+\/$/, "");
+    document.write('<link rel="stylesheet" href="' + window.__siteBase + 'theme.css">');
+    document.write('<link rel="stylesheet" href="' + window.__siteBase + 'site-header.css">');
+    document.write('<link rel="stylesheet" href="' + window.__gameBase + 'style.css">');
+  </script>
+  <title>서바이버 - 미니게임 모음</title>
+</head>
+<body>
+  <script>
+    document.write('<script src="' + window.__siteBase + 'site-header.js"><\/script>');
+  </script>
+
+  <a class="back-link" href="../../index.html">← 목록으로</a>
+  <h1>서바이버</h1>
+
+  <div id="class-screen" class="class-screen">
+    <p class="class-prompt">직업을 선택하세요 — 몰려오는 적 사이에서 최대한 오래 버티세요</p>
+    <div class="class-group">
+      <button class="class-btn" data-class="warrior">
+        <span class="class-name">⚔️ 전사</span>
+        <span class="class-sub">근접 — 주위 적을 넓게 베어냅니다</span>
+      </button>
+      <button class="class-btn" data-class="mage">
+        <span class="class-name">🔮 마법사</span>
+        <span class="class-sub">원거리 — 가장 가까운 적에게 자동으로 마법을 씁니다</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="game-screen" class="game-screen" hidden>
+    <div class="status-bar">
+      <span id="time-label">00:00</span>
+      <span id="level-label">Lv.1</span>
+    </div>
+    <div class="bar-row">
+      <div class="bar hp-bar"><div id="hp-fill" class="bar-fill hp-fill"></div></div>
+      <div class="bar xp-bar"><div id="xp-fill" class="bar-fill xp-fill"></div></div>
+    </div>
+
+    <div class="canvas-wrapper">
+      <canvas id="game-canvas" width="440" height="600"></canvas>
+
+      <div id="levelup-modal" class="levelup-modal" hidden>
+        <div class="levelup-card">
+          <p class="levelup-title">🆙 레벨 업!</p>
+          <div id="levelup-options" class="levelup-options"></div>
+        </div>
+      </div>
+
+      <div id="result-overlay" class="result-overlay" hidden>
+        <div class="result-card">
+          <p class="result-title">💀 쓰러졌습니다</p>
+          <p id="result-summary"></p>
+          <p id="result-points" class="win-points"></p>
+          <button id="result-close-btn">직업 다시 선택</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="hint-text">방향키/WASD로 이동하거나, 화면을 누른 채 드래그하세요. 공격은 자동입니다.</p>
+  </div>
+
+  <script>
+    document.write('<script src="' + window.__siteBase + 'firebase-config.js"><\/script>');
+  </script>
+  <script>
+    document.write('<script src="' + window.__siteBase + 'auth.js"><\/script>');
+  </script>
+  <script>
+    document.write('<script src="' + window.__gameBase + 'script.js"><\/script>');
+  </script>
+</body>
+</html>

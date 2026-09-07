@@ -33,5 +33,12 @@
     "description": "방향키로 타일을 밀어서 같은 숫자끼리 합치는 클래식 퍼즐",
     "path": "games/2048/index.html",
     "thumbnail": "games/2048/thumbnail.svg"
+  },
+  {
+    "id": "survivor",
+    "title": "서바이버",
+    "description": "전사 또는 마법사로 몰려오는 적 사이에서 최대한 오래 버티세요",
+    "path": "games/survivor/index.html",
+    "thumbnail": "games/survivor/thumbnail.svg"
   }
 ]
