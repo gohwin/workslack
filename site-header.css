@@ -54,13 +54,25 @@
 
 /* Nav bar */
 
+/* 3-column grid instead of flex space-between: the middle column is
+   auto-sized to the title's own content, and the two 1fr side columns split
+   whatever's left EQUALLY -- so the title lands at the true center of the
+   bar regardless of how wide .brand vs .account-area are (a logged-in
+   account chip vs. the guest hint text are rarely the same width, and
+   flex-centering-in-leftover-space drifts off-center whenever they
+   differ). This also can't overlap either side the way an absolutely
+   positioned title could: if the title's max-width plus both sides' actual
+   content is more than the bar can fit, the grid grows to overflow instead
+   of silently overlapping. When there's no title (index.html), the middle
+   column just collapses to 0 and brand/account-area split the row exactly
+   like a 2-column layout would. */
 .nav-bar {
   position: sticky;
   top: 0;
   z-index: 100;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   /* Fixed instead of content-driven (padding + tallest child) -- the game
      title (.nav-game-title, 1.4rem) made game pages' header a few px
@@ -77,12 +89,12 @@
 }
 
 .brand {
+  justify-self: start;
   font-size: 1.3rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   text-decoration: none;
   color: var(--text);
-  flex-shrink: 0;
 }
 
 .brand-accent {
@@ -100,20 +112,11 @@
 /* Game title, only present on game pages (see site-header.js). No back
    link here -- the brand logo on the left already goes to the list. */
 
-/* Centered on the nav bar's own box via absolute positioning, not flex
-   space-between-ing the leftover room between .brand and .account-area --
-   those two are rarely the same width (a logged-in account chip is wider
-   than the guest hint), so flex-centering visibly drifted off the true
-   screen center toward whichever side was narrower. The nav bar itself
-   spans the full page width (no max-width wrapper around it), so centering
-   on it is centering on the screen. */
 .nav-game {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
+  justify-self: center;
+  min-width: 0;
   max-width: 46vw;
 }
 
@@ -131,8 +134,10 @@
 }
 
 .account-area {
+  justify-self: end;
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .account-row[hidden] {
@@ -383,27 +388,32 @@
     display: none;
   }
 
-  /* At this width, brand + account-area alone can fill the row, so an
-     absolutely-centered title would sit on top of them -- give it its own
-     full-width row below instead. That means the header can no longer be a
-     fixed height here (two rows instead of one), so height goes back to
-     auto with padding restoring the vertical spacing that height:68px
-     covered above. */
+  /* At this width, brand + account-area alone can fill the row, so the
+     title needs its own full row below instead of squeezing into the
+     3-column grid's middle column. Switch to a 2-row grid: brand/account
+     on row 1, title spanning the full width on row 2. That means the
+     header can no longer be a fixed height here (two rows instead of
+     one), so height goes back to auto with padding restoring the vertical
+     spacing that height: 68px covered above. */
   .nav-bar {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "brand account" "title title";
     height: auto;
     padding: 12px 24px;
-    flex-wrap: wrap;
     row-gap: 8px;
   }
 
+  .brand {
+    grid-area: brand;
+  }
+
+  .account-area {
+    grid-area: account;
+  }
+
   .nav-game {
-    position: static;
-    left: auto;
-    top: auto;
-    transform: none;
+    grid-area: title;
+    justify-self: center;
     max-width: none;
-    flex-basis: 100%;
-    order: 3;
-    justify-content: center;
   }
 }
