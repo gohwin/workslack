@@ -217,20 +217,37 @@ const BOSS_STAT_OPTIONS = [
 // `special: true` marks these for the gold button styling in
 // openNextChoice() below -- they're rarer/more impactful than a normal
 // stat tick, so they shouldn't look like just another purple button.
+// Each class maps to a list now (warrior has two distinct specials) --
+// pickClassSpecial() below picks one at random whenever a special slot
+// is offered.
 const CLASS_SPECIAL_OPTIONS = {
-  warrior: {
-    id: "melee_range",
-    label: "크기 +10%",
-    special: true,
-    apply: (p) => { p.meleeRadiusMult = Math.round((p.meleeRadiusMult || 1) * 1.1 * 100) / 100; },
-  },
-  mage: {
-    id: "extra_projectile",
-    label: "투사체 +1개",
-    special: true,
-    apply: (p) => { p.projectileCount = (p.projectileCount || 1) + 1; },
-  },
+  warrior: [
+    {
+      id: "melee_size",
+      label: "크기 +10%",
+      special: true,
+      apply: (p) => { p.meleeRadiusMult = Math.round((p.meleeRadiusMult || 1) * 1.1 * 100) / 100; },
+    },
+    {
+      id: "melee_angle",
+      label: "각도 +10도",
+      special: true,
+      apply: (p) => { p.meleeAngleBonusDeg = (p.meleeAngleBonusDeg || 0) + 10; },
+    },
+  ],
+  mage: [
+    {
+      id: "extra_projectile",
+      label: "투사체 +1개",
+      special: true,
+      apply: (p) => { p.projectileCount = (p.projectileCount || 1) + 1; },
+    },
+  ],
 };
+
+function pickClassSpecial() {
+  return pickRandomOptions(CLASS_SPECIAL_OPTIONS[player.classKey], 1)[0];
+}
 
 // Extremely rare chance for the class-specific special to sneak into a
 // normal level-up's 3 choices too, not just guaranteed boss rewards.
@@ -464,9 +481,10 @@ function startClass(classKey) {
     invulnMs: 0,
     regenPerSec: 0,
     lifesteal: 0,
-    meleeRadiusMult: 1, // warrior-only boss reward (attack range)
-    projectileCount: 1, // mage-only boss reward (extra projectiles)
-    facingAngle: 0, // warrior-only: melee is a 180-degree cone in front of this
+    meleeRadiusMult: 1, // warrior-only special (attack size)
+    meleeAngleBonusDeg: 0, // warrior-only special (extra cone width, in degrees)
+    projectileCount: 1, // mage-only special (extra projectiles)
+    facingAngle: 0, // warrior-only: melee is a cone in front of this
   };
   enemies = [];
   projectiles = [];
@@ -561,7 +579,7 @@ function gainXp(amount) {
 // class-specific pick isn't always shown last.
 function buildBossRewardOptions() {
   const picks = pickRandomOptions(BOSS_STAT_OPTIONS, 2);
-  picks.push(CLASS_SPECIAL_OPTIONS[player.classKey]);
+  picks.push(pickClassSpecial());
   return pickRandomOptions(picks, picks.length);
 }
 
@@ -594,7 +612,7 @@ function openNextChoice() {
 function buildLevelUpOptions() {
   if (Math.random() < RARE_SPECIAL_IN_LEVELUP_CHANCE) {
     const picks = pickRandomOptions(LEVEL_UP_OPTIONS, 2);
-    picks.push(CLASS_SPECIAL_OPTIONS[player.classKey]);
+    picks.push(pickClassSpecial());
     return pickRandomOptions(picks, picks.length);
   }
   return pickRandomOptions(LEVEL_UP_OPTIONS, 3);
@@ -628,11 +646,15 @@ function renderStatsSidebar() {
     ["체력 재생", player.regenPerSec ? `초당 +${player.regenPerSec}` : "없음"],
     ["흡혈", player.lifesteal ? `${Math.round(player.lifesteal * 100)}%` : "없음"],
   ];
-  // Class-specific boss-reward stat, only worth showing once it's actually
-  // been picked up at least once.
-  if (player.classKey === "warrior" && player.meleeRadiusMult > 1) {
-    const cfg = CLASS_CONFIG.warrior;
-    rows.push(["크기", Math.round(cfg.meleeRadius * player.meleeRadiusMult)]);
+  // Class-specific special stats, only worth showing once actually picked.
+  if (player.classKey === "warrior") {
+    if (player.meleeRadiusMult > 1) {
+      const cfg = CLASS_CONFIG.warrior;
+      rows.push(["크기", Math.round(cfg.meleeRadius * player.meleeRadiusMult)]);
+    }
+    if (player.meleeAngleBonusDeg > 0) {
+      rows.push(["각도", `${180 + player.meleeAngleBonusDeg}도`]);
+    }
   } else if (player.classKey === "mage" && player.projectileCount > 1) {
     rows.push(["투사체 수", player.projectileCount]);
   }
@@ -668,18 +690,19 @@ function applyLifesteal(damage) {
   if (player.lifesteal) player.hp = Math.min(player.maxHp, player.hp + damage * player.lifesteal);
 }
 
-// Warrior's melee is a 180-degree cone in front of wherever the player is
-// currently facing (player.facingAngle, updated from movement direction),
-// not a full circle -- an earlier version hit everything around the player
-// regardless of angle, which the visual (a wedge) was misrepresenting
-// either way: a random-angle wedge looked like it should sometimes miss
-// enemies that were actually always hit, and a full-circle flash didn't
-// read as an aimable attack at all. Making the cone real (not just visual)
-// means facing your enemies now actually matters for the warrior.
-function angleWithinFacingCone(fromX, fromY, toX, toY, facingAngle) {
+// Warrior's melee is a cone in front of wherever the player is currently
+// facing (player.facingAngle, updated from movement direction), not a full
+// circle -- an earlier version hit everything around the player regardless
+// of angle, which the visual (a wedge) was misrepresenting either way: a
+// random-angle wedge looked like it should sometimes miss enemies that were
+// actually always hit, and a full-circle flash didn't read as an aimable
+// attack at all. Making the cone real (not just visual) means facing your
+// enemies now actually matters for the warrior. Base width is 180 degrees
+// (halfAngle = PI/2); the "각도 +10도" special widens it further.
+function angleWithinFacingCone(fromX, fromY, toX, toY, facingAngle, halfAngle) {
   const angleToTarget = Math.atan2(toY - fromY, toX - fromX);
   const diff = Math.atan2(Math.sin(angleToTarget - facingAngle), Math.cos(angleToTarget - facingAngle));
-  return Math.abs(diff) <= Math.PI / 2;
+  return Math.abs(diff) <= halfAngle;
 }
 
 function performAttack() {
@@ -687,11 +710,12 @@ function performAttack() {
   sfx.attack();
   if (cfg.attackType === "melee") {
     const radius = cfg.meleeRadius * player.meleeRadiusMult;
-    meleeEffects.push({ x: player.x, y: player.y, radius, angle: player.facingAngle, ageMs: 0 });
+    const halfAngle = Math.PI / 2 + ((player.meleeAngleBonusDeg || 0) * Math.PI) / 180 / 2;
+    meleeEffects.push({ x: player.x, y: player.y, radius, angle: player.facingAngle, halfAngle, ageMs: 0 });
     for (const enemy of enemies) {
       if (
         dist(player.x, player.y, enemy.x, enemy.y) <= radius + enemy.radius &&
-        angleWithinFacingCone(player.x, player.y, enemy.x, enemy.y, player.facingAngle)
+        angleWithinFacingCone(player.x, player.y, enemy.x, enemy.y, player.facingAngle, halfAngle)
       ) {
         enemy.hp -= player.attackDamage;
         applyLifesteal(player.attackDamage);
@@ -880,15 +904,15 @@ function render() {
   }
 
 
-  // Warrior's melee: a range ring (max reach) plus the actual 180-degree
-  // hit cone (eff.angle is the facing direction, the cone spans +/-90
-  // degrees around it -- see angleWithinFacingCone() in performAttack()).
-  // This used to be a full-circle or spinning-360 visual while hit
-  // detection was omnidirectional; now that the cone is real (facing your
-  // enemies matters), the drawn wedge IS the hit boundary, not a rough
-  // approximation of one -- so it's outlined precisely rather than
-  // animated as a spin or flash.
-  const OPEN_MS = 90; // the cone opens to its full 180 degrees within this window
+  // Warrior's melee: a range ring (max reach) plus the actual hit cone
+  // (eff.angle is the facing direction, eff.halfAngle is how far it spans
+  // to each side -- see angleWithinFacingCone() in performAttack()). This
+  // used to be a full-circle or spinning-360 visual while hit detection
+  // was omnidirectional; now that the cone is real (facing your enemies
+  // matters, and the "각도 +10도" special can widen it), the drawn wedge IS
+  // the hit boundary, not a rough approximation of one -- so it's outlined
+  // precisely rather than animated as a spin or flash.
+  const OPEN_MS = 90; // the cone opens to its full width within this window
   for (const eff of meleeEffects) {
     const t = eff.ageMs / 250;
     const fade = 1 - t;
@@ -900,7 +924,7 @@ function render() {
     ctx.stroke();
 
     const openT = Math.min(1, eff.ageMs / OPEN_MS);
-    const halfSweep = (Math.PI / 2) * openT;
+    const halfSweep = eff.halfAngle * openT;
     const startAngle = eff.angle - halfSweep;
     const endAngle = eff.angle + halfSweep;
 
