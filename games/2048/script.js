@@ -2,7 +2,16 @@
 // site-wide ../../auth.js (loaded via a <script> tag before this file), same
 // pattern as every other game here.
 
+// Tiles are tracked as identity objects ({id, r, c, value}), not just a
+// plain value grid, so a move can animate: update each tile's r/c, let the
+// CSS transition slide it there, then -- once the slide finishes -- resolve
+// merges (remove the "losing" tile, double the "winning" one) and spawn the
+// new tile. A plain grid can't drive this because it has no notion of
+// "this specific tile moved from A to B."
 const SIZE = 4;
+const GAP = 10; // px, must match .tile-layer/.board-2048 CSS
+const SLIDE_MS = 130; // must stay >= the CSS transition duration on .tile
+
 const STORAGE_KEY = "2048-best-score";
 // The Firestore rule for crossword-users/{uid}/history caps a single write's
 // `points` at 1000 (see ../crossword/README.md) -- raw 2048 scores from a
@@ -12,25 +21,26 @@ const STORAGE_KEY = "2048-best-score";
 const SCORE_TO_POINTS_DIVISOR = 20;
 const MAX_POINTS = 900;
 
-let grid = createGrid();
+let tiles = []; // { id, r, c, value }
+let tileElements = new Map(); // id -> DOM element
+let nextTileId = 1;
+let cellSize = 0;
 let score = 0;
 let bestScore = loadBestScore();
 let won = false;
 let gameOverFlag = false;
+let animating = false;
 let touchStartX = 0;
 let touchStartY = 0;
 
 const boardEl = document.getElementById("board");
+const tileLayerEl = document.getElementById("tile-layer");
 const scoreLabelEl = document.getElementById("score-label");
 const bestLabelEl = document.getElementById("best-label");
 const winBannerEl = document.getElementById("win-banner");
 const resultOverlayEl = document.getElementById("result-overlay");
 const resultScoreEl = document.getElementById("result-score");
 const resultPointsEl = document.getElementById("result-points");
-
-function createGrid() {
-  return Array.from({ length: SIZE }, () => new Array(SIZE).fill(0));
-}
 
 function loadBestScore() {
   try {
@@ -51,70 +61,101 @@ function saveBestScoreIfHigher(value) {
   }
 }
 
-function emptyCells(g) {
-  const cells = [];
+function buildBackgroundCells() {
+  boardEl.querySelectorAll(".cell").forEach((el) => el.remove());
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    boardEl.insertBefore(cell, tileLayerEl);
+  }
+}
+
+function applyCellSize() {
+  const w = tileLayerEl.clientWidth;
+  cellSize = (w - GAP * (SIZE - 1)) / SIZE;
+}
+
+function positionTileEl(el, tile) {
+  el.style.width = `${cellSize}px`;
+  el.style.height = `${cellSize}px`;
+  el.style.left = `${tile.c * (cellSize + GAP)}px`;
+  el.style.top = `${tile.r * (cellSize + GAP)}px`;
+}
+
+function ensureTileElement(tile) {
+  let el = tileElements.get(tile.id);
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "tile spawning";
+    el.addEventListener(
+      "animationend",
+      () => el.classList.remove("spawning", "merging"),
+      { once: true }
+    );
+    tileLayerEl.appendChild(el);
+    tileElements.set(tile.id, el);
+  }
+  return el;
+}
+
+function renderTileVisual(tile) {
+  const el = tileElements.get(tile.id);
+  if (!el) return;
+  el.textContent = String(tile.value);
+  for (const c of [...el.classList]) {
+    if (c.startsWith("val-")) el.classList.remove(c);
+  }
+  el.classList.add(tile.value <= 2048 ? `val-${tile.value}` : "val-max");
+}
+
+function removeTile(id) {
+  const el = tileElements.get(id);
+  if (el) el.remove();
+  tileElements.delete(id);
+  tiles = tiles.filter((t) => t.id !== id);
+}
+
+function syncTilePositions() {
+  for (const t of tiles) {
+    const el = ensureTileElement(t);
+    positionTileEl(el, t);
+  }
+}
+
+function emptyCellList() {
+  const empties = [];
   for (let r = 0; r < SIZE; r++) {
     for (let c = 0; c < SIZE; c++) {
-      if (g[r][c] === 0) cells.push([r, c]);
+      if (!tiles.some((t) => t.r === r && t.c === c)) empties.push({ r, c });
     }
   }
-  return cells;
+  return empties;
 }
 
-function spawnTile(g) {
-  const empties = emptyCells(g);
-  if (!empties.length) return false;
-  const [r, c] = empties[Math.floor(Math.random() * empties.length)];
-  g[r][c] = Math.random() < 0.9 ? 2 : 4;
-  return true;
+function spawnTile() {
+  const empties = emptyCellList();
+  if (!empties.length) return null;
+  const { r, c } = empties[Math.floor(Math.random() * empties.length)];
+  const tile = { id: nextTileId++, r, c, value: Math.random() < 0.9 ? 2 : 4 };
+  tiles.push(tile);
+  const el = ensureTileElement(tile);
+  positionTileEl(el, tile);
+  renderTileVisual(tile);
+  return tile;
 }
 
-function gridsEqual(a, b) {
-  for (let r = 0; r < SIZE; r++) {
-    for (let c = 0; c < SIZE; c++) {
-      if (a[r][c] !== b[r][c]) return false;
-    }
-  }
-  return true;
-}
-
-function transpose(g) {
-  return g[0].map((_, c) => g.map((row) => row[c]));
-}
-
-function reverseRows(g) {
-  return g.map((row) => [...row].reverse());
-}
-
-// Classic slide-left-and-merge for one row. Each tile merges at most once
-// per move (the splice shrinks the array so an already-merged tile is never
-// re-examined against its new neighbor in the same pass).
-function slideRowLeft(row) {
-  const arr = row.filter((v) => v !== 0);
-  let gained = 0;
-  for (let i = 0; i < arr.length - 1; i++) {
-    if (arr[i] === arr[i + 1]) {
-      arr[i] *= 2;
-      gained += arr[i];
-      arr.splice(i + 1, 1);
-    }
-  }
-  while (arr.length < SIZE) arr.push(0);
-  return { row: arr, gained };
-}
-
-function slideLeft(g) {
-  let gained = 0;
-  const newGrid = g.map((row) => {
-    const { row: newRow, gained: rowGained } = slideRowLeft(row);
-    gained += rowGained;
-    return newRow;
-  });
-  return { grid: newGrid, gained };
+function buildValueGrid() {
+  const g = Array.from({ length: SIZE }, () => new Array(SIZE).fill(0));
+  for (const t of tiles) g[t.r][t.c] = t.value;
+  return g;
 }
 
 function hasMovesLeft(g) {
-  if (emptyCells(g).length > 0) return true;
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (g[r][c] === 0) return true;
+    }
+  }
   for (let r = 0; r < SIZE; r++) {
     for (let c = 0; c < SIZE; c++) {
       const v = g[r][c];
@@ -125,65 +166,95 @@ function hasMovesLeft(g) {
   return false;
 }
 
-function buildBoardDom() {
-  boardEl.innerHTML = "";
-  for (let i = 0; i < SIZE * SIZE; i++) {
-    const cell = document.createElement("div");
-    cell.className = "cell";
-    boardEl.appendChild(cell);
-  }
-}
-
-function render() {
+function updateHud() {
   scoreLabelEl.textContent = `점수 ${score}`;
   bestLabelEl.textContent = `최고 ${Math.max(bestScore, score)}`;
-  const cells = boardEl.children;
-  for (let r = 0; r < SIZE; r++) {
-    for (let c = 0; c < SIZE; c++) {
-      const val = grid[r][c];
-      const cell = cells[r * SIZE + c];
-      cell.textContent = val === 0 ? "" : String(val);
-      cell.className = "cell" + (val ? ` val-${val <= 2048 ? val : "max"}` : "");
-    }
-  }
+}
+
+// Tiles along the line the move direction slides toward, ordered from the
+// leading edge outward (so index 0 in the returned list is the one closest
+// to where everything piles up).
+function getLineTiles(direction, index) {
+  if (direction === "left") return tiles.filter((t) => t.r === index).sort((a, b) => a.c - b.c);
+  if (direction === "right") return tiles.filter((t) => t.r === index).sort((a, b) => b.c - a.c);
+  if (direction === "up") return tiles.filter((t) => t.c === index).sort((a, b) => a.r - b.r);
+  return tiles.filter((t) => t.c === index).sort((a, b) => b.r - a.r); // down
+}
+
+function lineCoord(direction, index, pos) {
+  if (direction === "left") return { r: index, c: pos };
+  if (direction === "right") return { r: index, c: SIZE - 1 - pos };
+  if (direction === "up") return { r: pos, c: index };
+  return { r: SIZE - 1 - pos, c: index }; // down
 }
 
 function move(direction) {
-  if (gameOverFlag) return;
-  let working = grid;
+  if (gameOverFlag || animating) return;
 
-  if (direction === "up") working = transpose(working);
-  else if (direction === "down") working = reverseRows(transpose(working));
-  else if (direction === "right") working = reverseRows(working);
+  let anyMoved = false;
+  const merges = []; // { primary, secondary, newValue }
 
-  const { grid: slid, gained } = slideLeft(working);
-
-  let result = slid;
-  if (direction === "up") result = transpose(result);
-  else if (direction === "down") result = transpose(reverseRows(result));
-  else if (direction === "right") result = reverseRows(result);
-
-  if (gridsEqual(result, grid)) return;
-
-  grid = result;
-  score += gained;
-  spawnTile(grid);
-  render();
-
-  if (!won && grid.some((row) => row.includes(2048))) {
-    won = true;
-    winBannerEl.hidden = false;
+  for (let index = 0; index < SIZE; index++) {
+    const lineTiles = getLineTiles(direction, index);
+    let pos = 0;
+    let i = 0;
+    while (i < lineTiles.length) {
+      const cur = lineTiles[i];
+      const nxt = lineTiles[i + 1];
+      const { r, c } = lineCoord(direction, index, pos);
+      if (nxt && nxt.value === cur.value) {
+        if (cur.r !== r || cur.c !== c) anyMoved = true;
+        if (nxt.r !== r || nxt.c !== c) anyMoved = true;
+        cur.r = r;
+        cur.c = c;
+        nxt.r = r;
+        nxt.c = c;
+        merges.push({ primary: cur, secondary: nxt, newValue: cur.value * 2 });
+        i += 2;
+      } else {
+        if (cur.r !== r || cur.c !== c) anyMoved = true;
+        cur.r = r;
+        cur.c = c;
+        i += 1;
+      }
+      pos++;
+    }
   }
 
-  if (!hasMovesLeft(grid)) {
-    endGame();
-  }
+  if (!anyMoved) return;
+
+  animating = true;
+  syncTilePositions(); // triggers the CSS slide transition toward the new r/c
+
+  setTimeout(() => {
+    let gained = 0;
+    for (const m of merges) {
+      gained += m.newValue;
+      removeTile(m.secondary.id);
+      m.primary.value = m.newValue;
+      renderTileVisual(m.primary);
+      const el = tileElements.get(m.primary.id);
+      if (el) el.classList.add("merging");
+    }
+    score += gained;
+    spawnTile();
+    updateHud();
+    animating = false;
+
+    if (!won && tiles.some((t) => t.value === 2048)) {
+      won = true;
+      winBannerEl.hidden = false;
+    }
+    if (!hasMovesLeft(buildValueGrid())) {
+      endGame();
+    }
+  }, SLIDE_MS);
 }
 
 async function endGame() {
   gameOverFlag = true;
   saveBestScoreIfHigher(score);
-  render();
+  updateHud();
 
   resultOverlayEl.hidden = false;
   resultScoreEl.textContent = `최종 점수 ${score}`;
@@ -197,15 +268,21 @@ async function endGame() {
 }
 
 function startNewGame() {
-  grid = createGrid();
+  tileElements.forEach((el) => el.remove());
+  tileElements.clear();
+  tiles = [];
+  nextTileId = 1;
   score = 0;
   won = false;
   gameOverFlag = false;
+  animating = false;
   winBannerEl.hidden = true;
   resultOverlayEl.hidden = true;
-  spawnTile(grid);
-  spawnTile(grid);
-  render();
+
+  applyCellSize();
+  spawnTile();
+  spawnTile();
+  updateHud();
 }
 
 document.addEventListener("keydown", (e) => {
@@ -244,6 +321,11 @@ boardEl.addEventListener(
   { passive: true }
 );
 
+window.addEventListener("resize", () => {
+  applyCellSize();
+  for (const t of tiles) positionTileEl(tileElements.get(t.id), t);
+});
+
 document.getElementById("new-game-btn").addEventListener("click", startNewGame);
 document.getElementById("result-close-btn").addEventListener("click", startNewGame);
 document.getElementById("win-continue-btn").addEventListener("click", () => {
@@ -251,5 +333,5 @@ document.getElementById("win-continue-btn").addEventListener("click", () => {
 });
 document.getElementById("win-restart-btn").addEventListener("click", startNewGame);
 
-buildBoardDom();
+buildBackgroundCells();
 startNewGame();

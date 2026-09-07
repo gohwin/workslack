@@ -57,6 +57,7 @@ button:hover {
 }
 
 .board-2048 {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(4, 1fr);
@@ -70,29 +71,68 @@ button:hover {
   user-select: none;
 }
 
+/* Static backdrop grid -- always empty, never carries text or a value
+   class. The actual numbered tiles live in .tile-layer on top so they can
+   be positioned in px and animated independently of this CSS grid. */
 .cell {
+  background: var(--cell-bg);
+  border-radius: 6px;
+}
+
+/* Sits exactly over the backdrop grid's content box (inset matches
+   .board-2048's own padding) so a tile's left/top in px lines up with the
+   grid cell underneath it. Tiles are taken out of grid flow since they're
+   absolutely positioned, so they don't disturb the .cell backdrop layout. */
+.tile-layer {
+  position: absolute;
+  inset: 10px;
+  pointer-events: none;
+}
+
+.tile {
+  position: absolute;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--cell-bg);
   border-radius: 6px;
   font-size: clamp(1rem, 6vw, 1.8rem);
   font-weight: 800;
   color: var(--text);
+  background: #3a3f52;
+  transition: left 120ms ease, top 120ms ease;
 }
 
-.cell.val-2 { background: #3a3f52; color: var(--text); }
-.cell.val-4 { background: #454b66; color: var(--text); }
-.cell.val-8 { background: #6d5efc; color: #fff; }
-.cell.val-16 { background: #7d5cf0; color: #fff; }
-.cell.val-32 { background: #a24be0; color: #fff; }
-.cell.val-64 { background: #d13bc9; color: #fff; }
-.cell.val-128 { background: #22d3ee; color: var(--accent-text); font-size: clamp(0.9rem, 5vw, 1.5rem); }
-.cell.val-256 { background: #34dba0; color: var(--accent-text); font-size: clamp(0.9rem, 5vw, 1.5rem); }
-.cell.val-512 { background: #4ade80; color: var(--accent-text); font-size: clamp(0.9rem, 5vw, 1.5rem); }
-.cell.val-1024 { background: #facc15; color: var(--accent-text); font-size: clamp(0.8rem, 4.5vw, 1.3rem); }
-.cell.val-2048 { background: #fb923c; color: #fff; font-size: clamp(0.8rem, 4.5vw, 1.3rem); }
-.cell.val-max { background: #ef4444; color: #fff; font-size: clamp(0.8rem, 4.5vw, 1.3rem); }
+.tile.spawning {
+  animation: tile-spawn 140ms ease;
+}
+
+.tile.merging {
+  animation: tile-pop 140ms ease;
+}
+
+@keyframes tile-spawn {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+@keyframes tile-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.tile.val-2 { background: #3a3f52; color: var(--text); }
+.tile.val-4 { background: #454b66; color: var(--text); }
+.tile.val-8 { background: #6d5efc; color: #fff; }
+.tile.val-16 { background: #7d5cf0; color: #fff; }
+.tile.val-32 { background: #a24be0; color: #fff; }
+.tile.val-64 { background: #d13bc9; color: #fff; }
+.tile.val-128 { background: #22d3ee; color: var(--accent-text); font-size: clamp(0.9rem, 5vw, 1.5rem); }
+.tile.val-256 { background: #34dba0; color: var(--accent-text); font-size: clamp(0.9rem, 5vw, 1.5rem); }
+.tile.val-512 { background: #4ade80; color: var(--accent-text); font-size: clamp(0.9rem, 5vw, 1.5rem); }
+.tile.val-1024 { background: #facc15; color: var(--accent-text); font-size: clamp(0.8rem, 4.5vw, 1.3rem); }
+.tile.val-2048 { background: #fb923c; color: #fff; font-size: clamp(0.8rem, 4.5vw, 1.3rem); }
+.tile.val-max { background: #ef4444; color: #fff; font-size: clamp(0.8rem, 4.5vw, 1.3rem); }
 
 .win-banner {
   position: absolute;
