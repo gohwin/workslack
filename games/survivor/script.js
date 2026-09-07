@@ -672,7 +672,7 @@ function performAttack() {
   sfx.attack();
   if (cfg.attackType === "melee") {
     const radius = cfg.meleeRadius * player.meleeRadiusMult;
-    meleeEffects.push({ x: player.x, y: player.y, radius, ageMs: 0 });
+    meleeEffects.push({ x: player.x, y: player.y, radius, angle: Math.random() * Math.PI * 2, ageMs: 0 });
     for (const enemy of enemies) {
       if (dist(player.x, player.y, enemy.x, enemy.y) <= radius + enemy.radius) {
         enemy.hp -= player.attackDamage;
@@ -861,12 +861,35 @@ function render() {
   }
 
 
+  // Warrior's melee: a range ring (full circle, shows the max reach) plus a
+  // sword-slash wedge that sweeps through part of that circle -- the ring
+  // alone read as a generic pulse, not an actual attack, since the mage's
+  // projectile is much more obviously "an attack happening."
+  const SWORD_SWEEP_ANGLE = Math.PI * 0.8; // ~144 degrees
+  const SWORD_SWEEP_MS = 140; // the wedge finishes opening partway through the effect's life
   for (const eff of meleeEffects) {
     const t = eff.ageMs / 250;
-    ctx.strokeStyle = `rgba(248, 113, 113, ${1 - t})`;
+    const fade = 1 - t;
+
+    ctx.strokeStyle = `rgba(248, 113, 113, ${fade})`;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(eff.x, eff.y, eff.radius * (0.6 + 0.4 * t), 0, Math.PI * 2);
+    ctx.stroke();
+
+    const sweepT = Math.min(1, eff.ageMs / SWORD_SWEEP_MS);
+    const sweep = SWORD_SWEEP_ANGLE * sweepT;
+    ctx.fillStyle = `rgba(248, 113, 113, ${fade * 0.5})`;
+    ctx.beginPath();
+    ctx.moveTo(eff.x, eff.y);
+    ctx.arc(eff.x, eff.y, eff.radius, eff.angle, eff.angle + sweep);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = `rgba(255, 255, 255, ${fade * 0.9})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(eff.x, eff.y, eff.radius, eff.angle, eff.angle + sweep);
     ctx.stroke();
   }
 
