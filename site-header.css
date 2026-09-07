@@ -62,7 +62,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 24px;
+  /* Fixed instead of content-driven (padding + tallest child) -- the game
+     title (.nav-game-title, 1.4rem) made game pages' header a few px
+     taller than the main page's (which has no title), so the two never
+     quite matched. auth-form/my-info-panel already assumed 68px (their
+     `top` value below), so this just makes that assumption actually true. */
+  height: 68px;
+  padding: 0 24px;
   margin: 0 0 24px;
   background: rgba(11, 12, 16, 0.85);
   backdrop-filter: blur(12px);
@@ -94,12 +100,21 @@
 /* Game title, only present on game pages (see site-header.js). No back
    link here -- the brand logo on the left already goes to the list. */
 
+/* Centered on the nav bar's own box via absolute positioning, not flex
+   space-between-ing the leftover room between .brand and .account-area --
+   those two are rarely the same width (a logged-in account chip is wider
+   than the guest hint), so flex-centering visibly drifted off the true
+   screen center toward whichever side was narrower. The nav bar itself
+   spans the full page width (no max-width wrapper around it), so centering
+   on it is centering on the screen. */
 .nav-game {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
-  min-width: 0;
-  flex: 1 1 auto;
-  justify-content: center;
+  max-width: 46vw;
 }
 
 .nav-game-title {
@@ -368,16 +383,27 @@
     display: none;
   }
 
-  /* At this width, brand + account-area alone can fill the row, so
-     nav-game (flex: 1 1 auto, min-width: 0) gets crushed to 0 -- give it
-     its own full-width row below instead of fighting them for space. */
+  /* At this width, brand + account-area alone can fill the row, so an
+     absolutely-centered title would sit on top of them -- give it its own
+     full-width row below instead. That means the header can no longer be a
+     fixed height here (two rows instead of one), so height goes back to
+     auto with padding restoring the vertical spacing that height:68px
+     covered above. */
   .nav-bar {
+    height: auto;
+    padding: 12px 24px;
     flex-wrap: wrap;
     row-gap: 8px;
   }
 
   .nav-game {
+    position: static;
+    left: auto;
+    top: auto;
+    transform: none;
+    max-width: none;
     flex-basis: 100%;
     order: 3;
+    justify-content: center;
   }
 }
