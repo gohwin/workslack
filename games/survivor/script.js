@@ -124,11 +124,26 @@ const DROP_TYPES = [
     color: "#a78bfa",
     // Instant burst instead of a timed pickup-radius buff: grabs every xp
     // orb and dropped item currently on the field once, right away.
+    //
+    // droppedItems is cleared to [] *before* iterating (the old items are
+    // captured into a local first) instead of after -- if a second magnet
+    // is sitting on the field, `it.type.apply(p)` below calls this same
+    // apply() again while still inside the outer call, and that nested
+    // call reads the live `droppedItems`. Clearing it after the loop meant
+    // the nested call would see that same not-yet-cleared array (still
+    // containing the magnet that triggered it), call apply() on it again,
+    // and recurse forever -- a real "Maximum call stack size exceeded"
+    // crash once two magnets happened to be uncollected at once. Clearing
+    // first means any nested call finds droppedItems already empty and
+    // returns immediately.
     apply: (p) => {
-      for (const orb of xpOrbs) gainXp(orb.value);
+      const orbs = xpOrbs;
       xpOrbs = [];
-      for (const it of droppedItems) it.type.apply(p);
+      for (const orb of orbs) gainXp(orb.value);
+
+      const items = droppedItems;
       droppedItems = [];
+      for (const it of items) it.type.apply(p);
     },
   },
   {
