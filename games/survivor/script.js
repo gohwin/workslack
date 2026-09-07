@@ -241,6 +241,7 @@ let xp = 0;
 let xpToNext = levelXpRequirement(1);
 let levelUpQueue = [];
 let levelUpModalOpen = false;
+let statsModalOpen = false;
 let elapsedSeconds = 0;
 let spawnTimerMs = 0;
 let nextBossAt = BOSS_INTERVAL_SECONDS;
@@ -284,6 +285,9 @@ const resultPointsEl = document.getElementById("result-points");
 const canvasWrapperEl = document.querySelector(".canvas-wrapper");
 const barRowEl = document.querySelector(".bar-row");
 const bossBannerEl = document.getElementById("boss-banner");
+const statsBtn = document.getElementById("stats-btn");
+const statsModalEl = document.getElementById("stats-modal");
+const statsListEl = document.getElementById("stats-list");
 
 renderBestRecord();
 
@@ -373,6 +377,7 @@ function startClass(classKey) {
   xpToNext = levelXpRequirement(1);
   levelUpQueue = [];
   levelUpModalOpen = false;
+  statsModalOpen = false;
   elapsedSeconds = 0;
   spawnTimerMs = 0;
   nextBossAt = BOSS_INTERVAL_SECONDS;
@@ -383,6 +388,7 @@ function startClass(classKey) {
   gameScreenEl.hidden = false;
   resultOverlayEl.hidden = true;
   levelupModalEl.hidden = true;
+  statsModalEl.hidden = true;
   bossBannerEl.hidden = true;
   fitBoardToViewport();
   updateHud();
@@ -476,6 +482,42 @@ function pickLevelUpOption(opt) {
     lastFrameTime = 0;
     rafHandle = requestAnimationFrame(frame);
   }
+}
+
+function renderStatsList() {
+  const atkPerSec = (1000 / player.attackCooldownMs).toFixed(2);
+  const rows = [
+    ["공격력", player.attackDamage],
+    ["공격속도", `초당 ${atkPerSec}회`],
+    ["이동속도", player.moveSpeed],
+    ["체력", `${Math.round(player.hp)} / ${player.maxHp}`],
+    ["체력 재생", player.regenPerSec ? `초당 +${player.regenPerSec}` : "없음"],
+    ["흡혈", player.lifesteal ? `${Math.round(player.lifesteal * 100)}%` : "없음"],
+  ];
+  statsListEl.innerHTML = rows
+    .map(([label, value]) => `<li><span>${label}</span><span>${value}</span></li>`)
+    .join("");
+}
+
+// Opening this pauses the game (same as a level-up) so reading the numbers
+// doesn't cost you a hit -- only allowed during normal play, not stacked on
+// top of a level-up choice or after the run has already ended.
+function openStatsModal() {
+  if (!running || levelUpModalOpen || statsModalOpen) return;
+  statsModalOpen = true;
+  running = false;
+  if (rafHandle) cancelAnimationFrame(rafHandle);
+  renderStatsList();
+  statsModalEl.hidden = false;
+}
+
+function closeStatsModal() {
+  if (!statsModalOpen) return;
+  statsModalOpen = false;
+  statsModalEl.hidden = true;
+  running = true;
+  lastFrameTime = 0;
+  rafHandle = requestAnimationFrame(frame);
 }
 
 function applyLifesteal(damage) {
@@ -743,6 +785,8 @@ document.querySelectorAll(".class-btn").forEach((btn) => {
   });
 });
 document.getElementById("result-close-btn").addEventListener("click", backToClassSelect);
+statsBtn.addEventListener("click", openStatsModal);
+document.getElementById("stats-close-btn").addEventListener("click", closeStatsModal);
 
 const KEY_MAP = {
   ArrowLeft: "left", a: "left", A: "left",

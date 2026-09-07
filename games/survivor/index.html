@@ -53,6 +53,7 @@
     <div class="status-bar">
       <span id="time-label">00:00</span>
       <span id="level-label">Lv.1</span>
+      <button id="stats-btn" class="stats-btn" aria-label="스탯 보기">📊 스탯</button>
     </div>
     <div class="bar-row">
       <div class="bar hp-bar"><div id="hp-fill" class="bar-fill hp-fill"></div></div>
@@ -68,6 +69,14 @@
         <div class="levelup-card">
           <p class="levelup-title">🆙 레벨 업!</p>
           <div id="levelup-options" class="levelup-options"></div>
+        </div>
+      </div>
+
+      <div id="stats-modal" class="levelup-modal" hidden>
+        <div class="levelup-card">
+          <p class="levelup-title">📊 내 스탯</p>
+          <ul id="stats-list" class="stats-list"></ul>
+          <button id="stats-close-btn">닫기</button>
         </div>
       </div>
 
