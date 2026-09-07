@@ -169,30 +169,26 @@ const resultSummaryEl = document.getElementById("result-summary");
 const resultPointsEl = document.getElementById("result-points");
 const canvasWrapperEl = document.querySelector(".canvas-wrapper");
 const barRowEl = document.querySelector(".bar-row");
-const hintTextEl = document.querySelector(".hint-text");
 
 // Sizes the board to the largest width that still lets the whole page fit
 // in the viewport with no scrolling. An earlier version tried to do this in
 // pure CSS with calc(100vh - <guessed chrome height>px), but that constant
-// has to match the real rendered height of the header/title/status
-// bar/hint text, which shifts across browsers/OSes/font stacks -- it kept
-// coming out wrong (board too tall, page scrolls, sticky nav bar hides the
+// has to match the real rendered height of the header/title/status bar,
+// which shifts across browsers/OSes/font stacks -- it kept coming out
+// wrong (board too tall, page scrolls, sticky nav bar hides the
 // title/bars above the fold). Measuring the actual layout instead of
-// guessing a constant is the fix.
+// guessing a constant is the fix. The canvas-wrapper is the last thing in
+// game-screen (the controls hint text lives on the class-select screen
+// instead, to give the board this room), so all that's left below it is
+// the body's own bottom padding.
 function fitBoardToViewport() {
   if (gameScreenEl.hidden) return;
   canvasWrapperEl.style.width = "";
   barRowEl.style.width = "";
 
-  const wrapperRect = canvasWrapperEl.getBoundingClientRect();
-  const hintRect = hintTextEl.getBoundingClientRect();
+  const wrapperTop = canvasWrapperEl.getBoundingClientRect().top;
   const bottomPadding = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
-  // Everything between the wrapper's bottom edge and the hint text's bottom
-  // edge (its top margin + its own height) -- measured directly instead of
-  // read from a specific CSS property, so it doesn't matter which of them
-  // changes later.
-  const spaceBelowWrapper = hintRect.bottom - wrapperRect.bottom;
-  const availableHeight = Math.max(200, window.innerHeight - wrapperRect.top - spaceBelowWrapper - bottomPadding - 16);
+  const availableHeight = Math.max(200, window.innerHeight - wrapperTop - bottomPadding - 16);
   const maxWidthByViewport = Math.min(990, window.innerWidth * 0.94);
   const widthByHeight = availableHeight * (CANVAS_W / CANVAS_H);
   const width = Math.max(240, Math.min(maxWidthByViewport, widthByHeight));
