@@ -298,6 +298,11 @@ button:disabled {
 }
 
 .omok-cell:disabled {
+  /* Overrides the site-wide `button:disabled { opacity: 0.4 }` above --
+     every occupied intersection is a disabled button (so it can't be
+     clicked again), which was fading every placed stone to 40% opacity
+     and making them look washed out/transparent instead of solid stones. */
+  opacity: 1;
   cursor: default;
 }
 
