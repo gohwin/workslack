@@ -167,6 +167,41 @@ const levelupOptionsEl = document.getElementById("levelup-options");
 const resultOverlayEl = document.getElementById("result-overlay");
 const resultSummaryEl = document.getElementById("result-summary");
 const resultPointsEl = document.getElementById("result-points");
+const canvasWrapperEl = document.querySelector(".canvas-wrapper");
+const barRowEl = document.querySelector(".bar-row");
+const hintTextEl = document.querySelector(".hint-text");
+
+// Sizes the board to the largest width that still lets the whole page fit
+// in the viewport with no scrolling. An earlier version tried to do this in
+// pure CSS with calc(100vh - <guessed chrome height>px), but that constant
+// has to match the real rendered height of the header/title/status
+// bar/hint text, which shifts across browsers/OSes/font stacks -- it kept
+// coming out wrong (board too tall, page scrolls, sticky nav bar hides the
+// title/bars above the fold). Measuring the actual layout instead of
+// guessing a constant is the fix.
+function fitBoardToViewport() {
+  if (gameScreenEl.hidden) return;
+  canvasWrapperEl.style.width = "";
+  barRowEl.style.width = "";
+
+  const wrapperRect = canvasWrapperEl.getBoundingClientRect();
+  const hintRect = hintTextEl.getBoundingClientRect();
+  const bottomPadding = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+  // Everything between the wrapper's bottom edge and the hint text's bottom
+  // edge (its top margin + its own height) -- measured directly instead of
+  // read from a specific CSS property, so it doesn't matter which of them
+  // changes later.
+  const spaceBelowWrapper = hintRect.bottom - wrapperRect.bottom;
+  const availableHeight = Math.max(200, window.innerHeight - wrapperRect.top - spaceBelowWrapper - bottomPadding - 16);
+  const maxWidthByViewport = Math.min(990, window.innerWidth * 0.94);
+  const widthByHeight = availableHeight * (CANVAS_W / CANVAS_H);
+  const width = Math.max(240, Math.min(maxWidthByViewport, widthByHeight));
+
+  canvasWrapperEl.style.width = `${width}px`;
+  barRowEl.style.width = `${width}px`;
+}
+
+window.addEventListener("resize", fitBoardToViewport);
 
 function formatTime(totalSeconds) {
   const m = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
@@ -229,6 +264,7 @@ function startClass(classKey) {
   gameScreenEl.hidden = false;
   resultOverlayEl.hidden = true;
   levelupModalEl.hidden = true;
+  fitBoardToViewport();
   updateHud();
 
   running = true;
