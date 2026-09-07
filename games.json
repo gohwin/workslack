@@ -26,5 +26,12 @@
     "description": "제한 시간 안에 단어를 입력하세요. 점수가 오를수록 점점 빠르고 길어져요",
     "path": "games/typing/index.html",
     "thumbnail": "games/typing/thumbnail.svg"
+  },
+  {
+    "id": "2048",
+    "title": "2048",
+    "description": "방향키로 타일을 밀어서 같은 숫자끼리 합치는 클래식 퍼즐",
+    "path": "games/2048/index.html",
+    "thumbnail": "games/2048/thumbnail.svg"
   }
 ]

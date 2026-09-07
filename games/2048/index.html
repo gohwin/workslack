@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    // 주소가 끝에 "/" 없이 폴더 경로로 열리면(예: /games/2048) style.css, script.js 같은
+    // 상대경로가 상위 폴더 기준으로 깨진다. <base> 태그로는 브라우저 프리로드 스캐너가
+    // 아직 고쳐지지 않은 원래 경로로 CSS를 먼저 요청해버려 소용없으므로, 태그 자체를
+    // 정적으로 두지 않고 경로를 계산해 직접 써넣는다.
+    window.__gameBase = (function () {
+      var path = location.pathname;
+      if (/\/$/.test(path)) return path;
+      var lastSlash = path.lastIndexOf("/");
+      var lastSegment = path.slice(lastSlash + 1);
+      return lastSegment.indexOf(".") !== -1 ? path.slice(0, lastSlash + 1) : path + "/";
+    })();
+    // 로그인/계정은 사이트 전체 공용이라 games/<id>/ 두 단계 위 사이트 루트에 있는
+    // firebase-config.js, auth.js를 그대로 가져다 쓴다.
+    window.__siteBase = window.__gameBase.replace(/games\/[^/]+\/$/, "");
+    document.write('<link rel="stylesheet" href="' + window.__siteBase + 'theme.css">');
+    document.write('<link rel="stylesheet" href="' + window.__siteBase + 'site-header.css">');
+    document.write('<link rel="stylesheet" href="' + window.__gameBase + 'style.css">');
+  </script>
+  <title>2048 - 미니게임 모음</title>
+</head>
+<body>
+  <script>
+    document.write('<script src="' + window.__siteBase + 'site-header.js"><\/script>');
+  </script>
+
+  <a class="back-link" href="../../index.html">← 목록으로</a>
+  <h1>2048</h1>
+
+  <div class="status-bar">
+    <span id="score-label">점수 0</span>
+    <span id="best-label">최고 0</span>
+    <button id="new-game-btn">새 게임</button>
+  </div>
+
+  <p class="hint-text">방향키(또는 스와이프)로 타일을 밀어서 같은 숫자끼리 합치세요.</p>
+
+  <div class="board-wrapper">
+    <div id="board" class="board-2048" role="grid" aria-label="2048 보드"></div>
+
+    <div id="win-banner" class="win-banner" hidden>
+      <p>🎉 2048 타일을 만들었어요!</p>
+      <div class="win-banner-actions">
+        <button id="win-continue-btn">계속하기</button>
+        <button id="win-restart-btn">새 게임</button>
+      </div>
+    </div>
+
+    <div id="result-overlay" class="result-overlay" hidden>
+      <div class="result-card">
+        <p class="result-title">게임 오버</p>
+        <p id="result-score"></p>
+        <p id="result-points" class="win-points"></p>
+        <button id="result-close-btn">새 게임</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.write('<script src="' + window.__siteBase + 'firebase-config.js"><\/script>');
+  </script>
+  <script>
+    document.write('<script src="' + window.__siteBase + 'auth.js"><\/script>');
+  </script>
+  <script>
+    document.write('<script src="' + window.__gameBase + 'script.js"><\/script>');
+  </script>
+</body>
+</html>
