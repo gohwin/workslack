@@ -65,6 +65,12 @@ button:disabled {
   padding: 24px;
 }
 
+.bot-difficulty-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .lobby-primary-btn {
   width: 100%;
   padding: 14px 0;
@@ -77,6 +83,13 @@ button:disabled {
 
 .lobby-primary-btn:hover {
   filter: brightness(1.08);
+}
+
+/* Same treatment, different gradient so 쉬움/어려움 read as distinct
+   choices at a glance, not just different label text on identical buttons. */
+.bot-hard-btn {
+  border-color: #f87171;
+  background: linear-gradient(135deg, #f87171, #fb923c);
 }
 
 .lobby-divider {
@@ -256,8 +269,11 @@ button:disabled {
 }
 
 .omok-lines line {
-  stroke: #6b4d28;
-  stroke-width: 0.25;
+  /* Darker + thicker than the first pass -- #6b4d28 at 0.25 was too close
+     in hue/weight to the #c9a06a wood background to read clearly. */
+  stroke: #4a3218;
+  stroke-width: 0.45;
+  stroke-opacity: 0.9;
   vector-effect: non-scaling-stroke;
 }
 

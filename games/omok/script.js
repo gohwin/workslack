@@ -19,7 +19,8 @@ const lobbyScreenEl = document.getElementById("lobby-screen");
 const waitingScreenEl = document.getElementById("waiting-screen");
 const gameScreenEl = document.getElementById("game-screen");
 
-const botGameBtn = document.getElementById("bot-game-btn");
+const botGameEasyBtn = document.getElementById("bot-game-easy-btn");
+const botGameHardBtn = document.getElementById("bot-game-hard-btn");
 const createRoomBtn = document.getElementById("create-room-btn");
 const joinCodeInputEl = document.getElementById("join-code-input");
 const joinRoomBtn = document.getElementById("join-room-btn");
@@ -58,6 +59,7 @@ let myRole = null; // "host" | "guest" | null
 let roomData = null;
 let unsubscribeRoom = null;
 let isBotGame = false;
+let botDifficulty = "hard"; // "easy" | "hard" -- see pickBotMove()
 
 function generateRoomCode() {
   let code = "";
@@ -358,8 +360,9 @@ function showResult() {
   resultOverlayEl.hidden = false;
 }
 
-function startBotGame() {
+function startBotGame(difficulty) {
   isBotGame = true;
+  botDifficulty = difficulty;
   currentRoomCode = null;
   myRole = "host"; // the human is always black and goes first
   leaveGameBtn.textContent = "나가기";
@@ -371,7 +374,7 @@ function startBotGame() {
     hostUid: "local-player",
     hostNickname: currentUser ? currentUser.nickname : "나",
     guestUid: "bot",
-    guestNickname: "🤖 봇",
+    guestNickname: difficulty === "easy" ? "🤖 봇 (쉬움)" : "🤖 봇 (어려움)",
     board: emptyBoard(),
     turn: "host",
     status: "playing",
@@ -448,15 +451,29 @@ function lineScoreAt(board, index, value) {
   return total;
 }
 
+// Hard mode plays every cell's score exactly (never misses a block, always
+// picks the top-scored move). Easy mode uses the same scoring but with two
+// knobs that keep it from playing perfectly every turn, so it's still a
+// real opponent, not a total pushover: BOT_BLOCK_RELIABILITY is one coin
+// flip per turn (not per cell, so a double-threat doesn't get "half
+// blocked") deciding whether it even bothers defending this turn, and
+// BOT_MISTAKE_CHANCE occasionally has it play a decent-but-not-optimal
+// move instead of the top-scored one. Both difficulties always take a
+// guaranteed win when one's available -- skipping it would read as
+// broken, not "easier."
+const BOT_BLOCK_RELIABILITY = 0.7; // easy mode only
+const BOT_MISTAKE_CHANCE = 0.3; // easy mode only
+
 function pickBotMove(board) {
   const emptyIndices = [];
   for (let i = 0; i < board.length; i++) if (board[i] === 0) emptyIndices.push(i);
   if (emptyIndices.length === 0) return null;
   if (emptyIndices.length === board.length) return Math.floor(board.length / 2); // empty board -> take the center
 
-  let bestScore = -Infinity;
-  let bestMoves = [];
+  const isEasy = botDifficulty === "easy";
+  const willBlock = isEasy ? Math.random() < BOT_BLOCK_RELIABILITY : true;
   const center = (BOARD_SIZE - 1) / 2;
+  const scored = [];
   for (const i of emptyIndices) {
     const winBoard = [...board];
     winBoard[i] = BOT_VALUE;
@@ -467,18 +484,22 @@ function pickBotMove(board) {
     const mustBlock = !!checkWin(blockBoard, i, HUMAN_VALUE);
 
     let score = lineScoreAt(board, i, BOT_VALUE) + lineScoreAt(board, i, HUMAN_VALUE) * 0.9;
-    if (mustBlock) score += 50000;
+    if (mustBlock && willBlock) score += 50000;
     const r = Math.floor(i / BOARD_SIZE);
     const c = i % BOARD_SIZE;
     score += (1 - (Math.abs(r - center) + Math.abs(c - center)) / BOARD_SIZE) * 2;
 
-    if (score > bestScore) {
-      bestScore = score;
-      bestMoves = [i];
-    } else if (score === bestScore) {
-      bestMoves.push(i);
-    }
+    scored.push({ i, score });
   }
+  scored.sort((a, b) => b.score - a.score);
+
+  if (isEasy && Math.random() < BOT_MISTAKE_CHANCE && scored.length > 1) {
+    const pool = scored.slice(1, Math.min(6, scored.length));
+    return pool[Math.floor(Math.random() * pool.length)].i;
+  }
+
+  const bestScore = scored[0].score;
+  const bestMoves = scored.filter((s) => s.score === bestScore).map((s) => s.i);
   return bestMoves[Math.floor(Math.random() * bestMoves.length)];
 }
 
@@ -585,7 +606,8 @@ function showLobbyError(message) {
   lobbyErrorEl.hidden = false;
 }
 
-botGameBtn.addEventListener("click", startBotGame);
+botGameEasyBtn.addEventListener("click", () => startBotGame("easy"));
+botGameHardBtn.addEventListener("click", () => startBotGame("hard"));
 
 createRoomBtn.addEventListener("click", () => {
   if (!currentUser) {
