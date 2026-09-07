@@ -8,7 +8,7 @@
 // hundred DOM nodes every frame would fall over well before canvas does.
 
 const CANVAS_W = 440;
-const CANVAS_H = 600;
+const CANVAS_H = 440;
 const PLAYER_RADIUS = 14;
 
 const CLASS_CONFIG = {

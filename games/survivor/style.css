@@ -122,7 +122,7 @@ button:hover {
 #game-canvas {
   width: 100%;
   height: auto;
-  aspect-ratio: 440 / 600;
+  aspect-ratio: 1 / 1;
   display: block;
   border: 2px solid var(--cell-border);
   border-radius: 10px;
