@@ -220,9 +220,9 @@ const BOSS_STAT_OPTIONS = [
 const CLASS_SPECIAL_OPTIONS = {
   warrior: {
     id: "melee_range",
-    label: "공격 범위 +20%",
+    label: "크기 +10%",
     special: true,
-    apply: (p) => { p.meleeRadiusMult = Math.round((p.meleeRadiusMult || 1) * 1.2 * 100) / 100; },
+    apply: (p) => { p.meleeRadiusMult = Math.round((p.meleeRadiusMult || 1) * 1.1 * 100) / 100; },
   },
   mage: {
     id: "extra_projectile",
@@ -632,7 +632,7 @@ function renderStatsSidebar() {
   // been picked up at least once.
   if (player.classKey === "warrior" && player.meleeRadiusMult > 1) {
     const cfg = CLASS_CONFIG.warrior;
-    rows.push(["공격 범위", Math.round(cfg.meleeRadius * player.meleeRadiusMult)]);
+    rows.push(["크기", Math.round(cfg.meleeRadius * player.meleeRadiusMult)]);
   } else if (player.classKey === "mage" && player.projectileCount > 1) {
     rows.push(["투사체 수", player.projectileCount]);
   }
