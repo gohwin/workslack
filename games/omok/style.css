@@ -217,34 +217,63 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+/* A real omok/go board is a grid of *lines*, with stones sitting on the
+   intersections -- not a checkerboard of filled squares. .omok-board is
+   the wooden square; .omok-board-inner is inset from its border by half a
+   cell spacing (via padding on .omok-board) so the outermost intersections
+   don't sit flush against the edge, and everything inside (the SVG grid
+   lines, the 225 stone buttons) is positioned with plain percentages
+   against that inner box -- see buildBoardDom()/buildBoardLinesSvg() in
+   script.js, which computes both from the same BOARD_SIZE math so they
+   always line up exactly. */
 .omok-board {
-  display: grid;
-  grid-template-columns: repeat(15, 1fr);
+  box-sizing: border-box;
   width: min(94vw, 560px);
   aspect-ratio: 1;
   margin: 0 auto;
+  padding: 3.6%;
   background: #c9a06a;
   border: 2px solid #8a6a3f;
   border-radius: 6px;
-  overflow: hidden;
+}
+
+.omok-board-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.omok-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.omok-lines line {
+  stroke: #6b4d28;
+  stroke-width: 0.25;
+  vector-effect: non-scaling-stroke;
 }
 
 .omok-cell {
-  position: relative;
+  position: absolute;
+  width: calc(100% / 14 * 0.82);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
   padding: 0;
   margin: 0;
   border: none;
-  border-radius: 0;
+  border-radius: 50%;
   background: transparent;
-  box-shadow: inset -1px -1px 0 rgba(0, 0, 0, 0.15);
 }
 
 .omok-cell:hover:not(:disabled)::before {
   content: "";
   position: absolute;
-  inset: 12%;
+  inset: 8%;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .omok-cell:disabled {
@@ -253,7 +282,7 @@ button:disabled {
 
 .omok-cell .stone {
   position: absolute;
-  inset: 8%;
+  inset: 4%;
   border-radius: 50%;
   pointer-events: none;
 }

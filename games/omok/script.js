@@ -228,6 +228,7 @@ function leaveRoom() {
   myRole = null;
   roomData = null;
   omokBoardEl.innerHTML = "";
+  boardCellEls = null;
   const url = new URL(window.location.href);
   url.searchParams.delete("room");
   history.replaceState(null, "", url);
@@ -264,26 +265,70 @@ function renderStatusBar() {
   }
 }
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+// Real omok/go boards are a grid of *lines*, with stones sitting on the
+// intersections -- not a checkerboard of filled squares. Draws BOARD_SIZE
+// horizontal + BOARD_SIZE vertical hairlines across a 0..100 unit square
+// (matches the percentage math buildBoardDom() uses to position stones),
+// so the lines and the actual clickable intersections always line up
+// exactly regardless of the board's rendered pixel size.
+function buildBoardLinesSvg() {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.classList.add("omok-lines");
+  const step = 100 / (BOARD_SIZE - 1);
+  for (let i = 0; i < BOARD_SIZE; i++) {
+    const pos = i * step;
+    const hLine = document.createElementNS(SVG_NS, "line");
+    hLine.setAttribute("x1", "0");
+    hLine.setAttribute("x2", "100");
+    hLine.setAttribute("y1", String(pos));
+    hLine.setAttribute("y2", String(pos));
+    svg.appendChild(hLine);
+    const vLine = document.createElementNS(SVG_NS, "line");
+    vLine.setAttribute("y1", "0");
+    vLine.setAttribute("y2", "100");
+    vLine.setAttribute("x1", String(pos));
+    vLine.setAttribute("x2", String(pos));
+    svg.appendChild(vLine);
+  }
+  return svg;
+}
+
+let boardCellEls = null;
+
 function buildBoardDom() {
   omokBoardEl.innerHTML = "";
-  const fragment = document.createDocumentFragment();
-  for (let i = 0; i < BOARD_SIZE * BOARD_SIZE; i++) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "omok-cell";
-    btn.addEventListener("click", () => placeStone(i));
-    fragment.appendChild(btn);
+  const inner = document.createElement("div");
+  inner.className = "omok-board-inner";
+  inner.appendChild(buildBoardLinesSvg());
+
+  boardCellEls = [];
+  const step = 100 / (BOARD_SIZE - 1);
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      const i = r * BOARD_SIZE + c;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "omok-cell";
+      btn.style.left = `${c * step}%`;
+      btn.style.top = `${r * step}%`;
+      btn.addEventListener("click", () => placeStone(i));
+      inner.appendChild(btn);
+      boardCellEls.push(btn);
+    }
   }
-  omokBoardEl.appendChild(fragment);
+  omokBoardEl.appendChild(inner);
 }
 
 function renderBoard() {
-  if (omokBoardEl.children.length === 0) buildBoardDom();
+  if (!boardCellEls) buildBoardDom();
   const winSet = new Set(roomData.winLine || []);
   const canPlay = roomData.status === "playing" && roomData.turn === myRole;
-  const cells = omokBoardEl.children;
-  for (let i = 0; i < cells.length; i++) {
-    const cell = cells[i];
+  for (let i = 0; i < boardCellEls.length; i++) {
+    const cell = boardCellEls[i];
     const value = roomData.board[i];
     cell.classList.toggle("win-cell", winSet.has(i));
     cell.disabled = value !== 0 || !canPlay;
