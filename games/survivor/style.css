@@ -76,6 +76,92 @@ button:hover {
   font-weight: 400;
 }
 
+/* Stat-allocation screen -- shown after picking a class, before the run
+   actually starts. Reuses .class-prompt/.hint-text styling from the class
+   screen above so it reads as the same flow, not a separate detour. */
+
+.allocate-screen {
+  padding: 32px 16px;
+  max-width: 340px;
+  margin: 0 auto;
+}
+
+.allocate-points-left {
+  color: var(--accent-2);
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin: 0 0 18px;
+}
+
+.allocate-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.allocate-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.allocate-label {
+  text-align: left;
+  font-weight: 600;
+}
+
+.allocate-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  line-height: 1;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.allocate-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.allocate-btn:disabled:hover {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.allocate-count {
+  min-width: 1.4em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.allocate-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.allocate-back-btn {
+  flex: 1;
+}
+
+.allocate-start-btn {
+  flex: 1;
+  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #0b0c10;
+  font-weight: 700;
+}
+
+.allocate-start-btn:hover {
+  filter: brightness(1.08);
+}
+
 /* Game screen */
 
 /* Canvas + HUD column and the always-on stats sidebar sit side by side in

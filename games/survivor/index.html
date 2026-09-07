@@ -49,6 +49,36 @@
     <p class="hint-text">방향키/WASD로 이동하거나, 화면을 누른 채 드래그하세요. 공격은 자동입니다.</p>
   </div>
 
+  <div id="allocate-screen" class="allocate-screen" hidden>
+    <p class="class-prompt">시작 스탯 포인트를 분배하세요</p>
+    <p id="allocate-points-left" class="allocate-points-left"></p>
+    <div class="allocate-rows">
+      <div class="allocate-row" data-stat="damage">
+        <span class="allocate-label">공격력</span>
+        <button class="allocate-btn" data-dir="-1" aria-label="공격력 포인트 감소">−</button>
+        <span class="allocate-count" data-count>0</span>
+        <button class="allocate-btn" data-dir="1" aria-label="공격력 포인트 증가">+</button>
+      </div>
+      <div class="allocate-row" data-stat="health">
+        <span class="allocate-label">체력</span>
+        <button class="allocate-btn" data-dir="-1" aria-label="체력 포인트 감소">−</button>
+        <span class="allocate-count" data-count>0</span>
+        <button class="allocate-btn" data-dir="1" aria-label="체력 포인트 증가">+</button>
+      </div>
+      <div class="allocate-row" data-stat="atkspeed">
+        <span class="allocate-label">공격속도</span>
+        <button class="allocate-btn" data-dir="-1" aria-label="공격속도 포인트 감소">−</button>
+        <span class="allocate-count" data-count>0</span>
+        <button class="allocate-btn" data-dir="1" aria-label="공격속도 포인트 증가">+</button>
+      </div>
+    </div>
+    <p class="hint-text">재생/흡혈은 0에서 시작하고, 이동속도는 고정입니다 — 게임 중 레벨업으로 얻으세요.</p>
+    <div class="allocate-actions">
+      <button id="allocate-back-btn" class="allocate-back-btn">← 직업 다시 선택</button>
+      <button id="allocate-start-btn" class="allocate-start-btn">시작하기</button>
+    </div>
+  </div>
+
   <div id="game-screen" class="game-screen" hidden>
     <div class="game-main">
       <div class="status-bar">

@@ -371,6 +371,9 @@ let pointerActive = false;
 let pointerTarget = { x: CANVAS_W / 2, y: CANVAS_H / 2 };
 
 const classScreenEl = document.getElementById("class-screen");
+const allocateScreenEl = document.getElementById("allocate-screen");
+const allocatePointsLeftEl = document.getElementById("allocate-points-left");
+const allocateRowEls = document.querySelectorAll(".allocate-row");
 const gameScreenEl = document.getElementById("game-screen");
 const bestRecordEl = document.getElementById("best-record");
 const canvasEl = document.getElementById("game-canvas");
@@ -475,7 +478,7 @@ function getCanvasPoint(e) {
   };
 }
 
-function startClass(classKey) {
+function startClass(classKey, allocation) {
   const cfg = CLASS_CONFIG[classKey];
   player = {
     classKey,
@@ -496,6 +499,17 @@ function startClass(classKey) {
     pierceCount: 0, // mage-only special (extra enemies a projectile passes through)
     facingAngle: 0, // warrior-only: melee is a cone in front of this
   };
+  // Pre-run stat allocation (see the allocate screen): each point just
+  // re-applies the matching LEVEL_UP_OPTIONS entry, so a starting point
+  // is worth exactly one in-run level-up pick instead of introducing a
+  // separate set of tuning numbers. Regen/lifesteal aren't allocatable --
+  // they start at 0 and are only ever picked up mid-run.
+  if (allocation) {
+    for (const [id, count] of Object.entries(allocation)) {
+      const opt = LEVEL_UP_OPTIONS.find((o) => o.id === id);
+      for (let i = 0; i < count; i++) opt.apply(player);
+    }
+  }
   enemies = [];
   projectiles = [];
   xpOrbs = [];
@@ -513,6 +527,7 @@ function startClass(classKey) {
   pointerActive = false;
 
   classScreenEl.hidden = true;
+  allocateScreenEl.hidden = true;
   gameScreenEl.hidden = false;
   resultOverlayEl.hidden = true;
   levelupModalEl.hidden = true;
@@ -1016,14 +1031,70 @@ function backToClassSelect() {
   running = false;
   if (rafHandle) cancelAnimationFrame(rafHandle);
   gameScreenEl.hidden = true;
+  allocateScreenEl.hidden = true;
   classScreenEl.hidden = false;
   renderBestRecord();
 }
 
+// Stat-allocation screen: shown after picking a class, before the run
+// starts. STAT_ALLOCATION_POINTS points to spread across attack/health/
+// attack-speed -- each point is applied via startClass() as one pick of
+// the matching LEVEL_UP_OPTIONS entry (see there for why).
+const STAT_ALLOCATION_POINTS = 5;
+let pendingClassKey = null;
+let allocation = { damage: 0, health: 0, atkspeed: 0 };
+
+function allocationSpent() {
+  return allocation.damage + allocation.health + allocation.atkspeed;
+}
+
+function renderAllocateScreen() {
+  const left = STAT_ALLOCATION_POINTS - allocationSpent();
+  allocatePointsLeftEl.textContent = `남은 포인트: ${left}`;
+  for (const row of allocateRowEls) {
+    const stat = row.dataset.stat;
+    row.querySelector("[data-count]").textContent = allocation[stat];
+    const minusBtn = row.querySelector('[data-dir="-1"]');
+    const plusBtn = row.querySelector('[data-dir="1"]');
+    minusBtn.disabled = allocation[stat] <= 0;
+    plusBtn.disabled = left <= 0;
+  }
+}
+
+function openAllocateScreen(classKey) {
+  pendingClassKey = classKey;
+  allocation = { damage: 0, health: 0, atkspeed: 0 };
+  classScreenEl.hidden = true;
+  allocateScreenEl.hidden = false;
+  renderAllocateScreen();
+}
+
+for (const row of allocateRowEls) {
+  const stat = row.dataset.stat;
+  for (const btn of row.querySelectorAll(".allocate-btn")) {
+    btn.addEventListener("click", () => {
+      const dir = Number(btn.dataset.dir);
+      if (dir > 0 && allocationSpent() < STAT_ALLOCATION_POINTS) allocation[stat] += 1;
+      else if (dir < 0 && allocation[stat] > 0) allocation[stat] -= 1;
+      renderAllocateScreen();
+    });
+  }
+}
+
+document.getElementById("allocate-back-btn").addEventListener("click", () => {
+  allocateScreenEl.hidden = true;
+  classScreenEl.hidden = false;
+  pendingClassKey = null;
+});
+
+document.getElementById("allocate-start-btn").addEventListener("click", () => {
+  startClass(pendingClassKey, allocation);
+});
+
 document.querySelectorAll(".class-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     ensureAudioCtx(); // unlock audio here, inside a real user gesture
-    startClass(btn.dataset.class);
+    openAllocateScreen(btn.dataset.class);
   });
 });
 document.getElementById("result-close-btn").addEventListener("click", backToClassSelect);
