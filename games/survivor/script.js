@@ -28,7 +28,7 @@ const CLASS_CONFIG = {
     label: "마법사",
     attackType: "ranged",
     attackCooldownMs: 500,
-    baseAttackDamage: 10,
+    baseAttackDamage: 15,
     baseMaxHp: 100,
     projectileSpeed: 340,
     color: "#22d3ee",
