@@ -70,8 +70,16 @@ function pickEnemyType() {
 const BOSS_INTERVAL_SECONDS = 60;
 
 const SPAWN_START_MS = 1300;
-const SPAWN_MIN_MS = 380;
-const SPAWN_RAMP_SECONDS = 100;
+const SPAWN_MIN_MS = 450;
+const SPAWN_RAMP_SECONDS = 130;
+// Nothing was capping how many enemies could be alive at once -- spawns
+// keep coming no matter what, so if the kill rate ever dips below the
+// spawn rate for a while (very plausible around the 60s mark, when spawn
+// interval is already down near its floor), the enemy count snowballs
+// without bound until the player is surrounded from every direction with
+// no way out. This caps the swarm size so survival stays about dodging and
+// clearing space, not an unwinnable pile-up.
+const MAX_ALIVE_ENEMIES = 45;
 
 const PLAYER_HIT_INVULN_MS = 500;
 
@@ -602,7 +610,7 @@ function frame(ts) {
   spawnTimerMs += dt * 1000;
   if (spawnTimerMs >= currentSpawnIntervalMs()) {
     spawnTimerMs = 0;
-    spawnEnemy();
+    if (enemies.length < MAX_ALIVE_ENEMIES) spawnEnemy();
   }
   if (elapsedSeconds >= nextBossAt) {
     spawnEnemy("boss");
