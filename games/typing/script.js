@@ -17,6 +17,11 @@ const SPAWN_MIN_MS = 450;
 const SPAWN_RAMP_SECONDS = 75; // spawn interval reaches its floor after this long survived
 const MAX_ACTIVE_WORDS = 7;
 
+// Points are paused site-wide while more games get added, so nobody has to
+// re-tune every game's point scale each time a new one shows up. Flip this
+// back to true (same everywhere else this flag appears) to resume scoring.
+const POINTS_ENABLED = false;
+
 // Longer words enter the pool as score climbs, same idea as before, just
 // keyed off words-popped instead of a per-word clear.
 const LENGTH_TIERS = [
@@ -217,6 +222,8 @@ async function endGame() {
   gameScreenEl.hidden = true;
   resultOverlayEl.hidden = false;
   resultScoreEl.textContent = `점수 ${score} · 생존 ${formatTime(elapsedSeconds)}`;
+  resultPointsEl.textContent = "";
+  if (!POINTS_ENABLED) return;
   resultPointsEl.textContent = currentUser ? "" : "로그인하면 점수가 쌓여요.";
   if (score > 0) {
     const awarded = await awardPoints(score, "typing", "타자 연습");

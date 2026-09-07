@@ -4,6 +4,11 @@ const DIFFICULTIES = {
   hard: { label: "어려움", rows: 16, cols: 30, mines: 99, points: 200 },
 };
 
+// Points are paused site-wide while more games get added, so nobody has to
+// re-tune every game's point scale each time a new one shows up. Flip this
+// back to true (same everywhere else this flag appears) to resume scoring.
+const POINTS_ENABLED = false;
+
 const STORAGE_KEY = "minesweeper-best-times";
 
 let difficulty = "easy";
@@ -278,6 +283,7 @@ function showResult(isWin) {
 }
 
 async function awardGamePoints() {
+  if (!POINTS_ENABLED) return;
   if (typeof awardPoints !== "function") return;
   const points = DIFFICULTIES[difficulty].points;
   resultPointsEl.textContent = currentUser ? "" : "로그인하면 점수가 쌓여요.";

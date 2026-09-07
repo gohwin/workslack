@@ -21,6 +21,11 @@ const STORAGE_KEY = "2048-best-score";
 const SCORE_TO_POINTS_DIVISOR = 20;
 const MAX_POINTS = 900;
 
+// Points are paused site-wide while more games get added, so nobody has to
+// re-tune every game's point scale each time a new one shows up. Flip this
+// back to true (same everywhere else this flag appears) to resume scoring.
+const POINTS_ENABLED = false;
+
 let tiles = []; // { id, r, c, value }
 let tileElements = new Map(); // id -> DOM element
 let nextTileId = 1;
@@ -258,8 +263,10 @@ async function endGame() {
 
   resultOverlayEl.hidden = false;
   resultScoreEl.textContent = `최종 점수 ${score}`;
-  resultPointsEl.textContent = currentUser ? "" : "로그인하면 점수가 쌓여요.";
+  resultPointsEl.textContent = "";
+  if (!POINTS_ENABLED) return;
 
+  resultPointsEl.textContent = currentUser ? "" : "로그인하면 점수가 쌓여요.";
   const points = Math.min(MAX_POINTS, Math.floor(score / SCORE_TO_POINTS_DIVISOR));
   if (points > 0 && typeof awardPoints === "function") {
     const awarded = await awardPoints(points, "2048", "2048");

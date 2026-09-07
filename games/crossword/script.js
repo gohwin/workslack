@@ -4,6 +4,10 @@
 // ../../firebase-config.js's window.__firebaseConfig).
 
 const POINTS_PER_COMPLETION = 100;
+// Points are paused site-wide while more games get added, so nobody has to
+// re-tune every game's point scale each time a new one shows up. Flip this
+// back to true (same everywhere else this flag appears) to resume scoring.
+const POINTS_ENABLED = false;
 // autoPlace()/normalize()/COMMON_POOL come from ./auto_crossword.js and
 // ./crossword_words.js (loaded via <script> tags before this file) -- the
 // same generator ../tools/build_puzzles.js used to run offline to
@@ -316,8 +320,12 @@ function checkCompletion() {
 // without limit, whether you're logged in or not.
 async function completeGame() {
   completed = true;
-  winTimeEl.textContent = currentUser ? "" : "로그인하면 완성할 때마다 점수가 쌓여요.";
   winOverlayEl.hidden = false;
+  if (!POINTS_ENABLED) {
+    winTimeEl.textContent = "";
+    return;
+  }
+  winTimeEl.textContent = currentUser ? "" : "로그인하면 완성할 때마다 점수가 쌓여요.";
   const awarded = await awardPoints(POINTS_PER_COMPLETION, "crossword", "크로스워드");
   if (awarded) winTimeEl.textContent = `+${POINTS_PER_COMPLETION}점 적립!`;
 }
