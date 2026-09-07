@@ -188,8 +188,11 @@ function fitBoardToViewport() {
 
   const wrapperTop = canvasWrapperEl.getBoundingClientRect().top;
   const bottomPadding = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
-  const availableHeight = Math.max(200, window.innerHeight - wrapperTop - bottomPadding - 16);
-  const maxWidthByViewport = Math.min(990, window.innerWidth * 0.94);
+  // Extra safety margin (beyond just body's bottom padding) so the board
+  // comes out comfortably smaller than the theoretical max instead of
+  // brushing right up against the edge of what fits.
+  const availableHeight = Math.max(200, window.innerHeight - wrapperTop - bottomPadding - 60);
+  const maxWidthByViewport = Math.min(880, window.innerWidth * 0.94);
   const widthByHeight = availableHeight * (CANVAS_W / CANVAS_H);
   const width = Math.max(240, Math.min(maxWidthByViewport, widthByHeight));
 
