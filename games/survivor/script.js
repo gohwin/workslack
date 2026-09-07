@@ -45,7 +45,14 @@ const ENEMY_TYPES = {
   normal: { hpMult: 1, speedMult: 1, radius: 13, color: "#ef4444", contactDamage: 10, xpValue: 1 },
   speedster: { hpMult: 0.5, speedMult: 1.8, radius: 10, color: "#fbbf24", contactDamage: 7, xpValue: 1 },
   brute: { hpMult: 2.6, speedMult: 0.55, radius: 19, color: "#a855f7", contactDamage: 16, xpValue: 2 },
-  boss: { hpMult: 9, speedMult: 0.5, radius: 30, color: "#7f1d1d", contactDamage: 25, xpValue: 6 },
+  // hpMult was 9 at first -- at the first boss (60s in) that's ~277 hp
+  // against a base warrior doing 10 dmg/0.7s (~14 dps), so killing it took
+  // ~20s of uninterrupted melee uptime while normal spawns kept adding
+  // contact damage on top. Not really killable before other enemies
+  // overwhelmed the player. 4x brings the first boss to ~123 hp (~9s to
+  // kill at base stats), and contact damage down 25 -> 18 so committing to
+  // the fight isn't a near-guaranteed big hit every time it connects.
+  boss: { hpMult: 4, speedMult: 0.5, radius: 30, color: "#7f1d1d", contactDamage: 18, xpValue: 6 },
 };
 
 // Speedsters/brutes phase in over time instead of being available from
