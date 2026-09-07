@@ -91,27 +91,15 @@
   font-weight: 700;
 }
 
-/* Back link + game title, only present on game pages (see site-header.js) */
+/* Game title, only present on game pages (see site-header.js). No back
+   link here -- the brand logo on the left already goes to the list. */
 
 .nav-game {
   display: flex;
   align-items: center;
-  gap: 10px;
   min-width: 0;
   flex: 1 1 auto;
   justify-content: center;
-}
-
-.nav-back {
-  flex-shrink: 0;
-  color: var(--accent-2);
-  text-decoration: none;
-  font-size: 0.85rem;
-  white-space: nowrap;
-}
-
-.nav-back:hover {
-  text-decoration: underline;
 }
 
 .nav-game-title {
@@ -376,9 +364,16 @@
     display: none;
   }
 
-  /* Narrow screens: drop the "workslack.gg" wordmark on game pages so the
-     back link + title (the more useful thing to see there) has room. */
-  .nav-bar:has(.nav-game) .brand {
-    display: none;
+  /* At this width, brand + account-area alone can fill the row, so
+     nav-game (flex: 1 1 auto, min-width: 0) gets crushed to 0 -- give it
+     its own full-width row below instead of fighting them for space. */
+  .nav-bar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .nav-game {
+    flex-basis: 100%;
+    order: 3;
   }
 }

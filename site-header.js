@@ -13,18 +13,15 @@
 (function () {
   var homeHref = typeof window.__siteBase === "string" ? window.__siteBase + "index.html" : "index.html";
   // Each game page's <head> script sets window.__gameTitle (see
-  // games/*/index.html) before this file loads, specifically so the back
-  // link + title can be written into the nav bar here instead of the page
-  // repeating them as its own <a class="back-link">/<h1> -- that used to eat
-  // a full extra row of vertical space on every game page, which mattered
-  // enough to fix once survivor's canvas started needing to fit the
-  // viewport height exactly.
+  // games/*/index.html) before this file loads, specifically so the title
+  // can be written into the nav bar here instead of the page repeating it
+  // as its own <h1> -- that used to eat a full extra row of vertical space
+  // on every game page, which mattered enough to fix once survivor's canvas
+  // started needing to fit the viewport height exactly. No separate "back
+  // to list" link -- the brand logo on the left already goes there.
   var gameTitle = typeof window.__gameTitle === "string" ? window.__gameTitle : null;
   var gameNavHtml = gameTitle
-    ? '<div class="nav-game">' +
-        '<a class="nav-back" href="' + homeHref + '">← 목록</a>' +
-        '<span class="nav-game-title">' + gameTitle + '</span>' +
-      '</div>'
+    ? '<div class="nav-game"><span class="nav-game-title">' + gameTitle + '</span></div>'
     : "";
 
   document.write(
