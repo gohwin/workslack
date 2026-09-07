@@ -27,7 +27,7 @@ const CLASS_CONFIG = {
     label: "마법사",
     attackType: "ranged",
     attackCooldownMs: 480,
-    baseAttackDamage: 8,
+    baseAttackDamage: 10,
     projectileSpeed: 340,
     color: "#22d3ee",
   },
@@ -93,13 +93,11 @@ const XP_PICKUP_RADIUS = PLAYER_RADIUS + 10;
 
 // Special item drops -- separate from the always-on xp orb, each kill has a
 // small extra chance of also dropping one of these (bosses always drop
-// one). `apply` runs on pickup; invincibility/magnet just set a countdown
-// (ms) that other systems below check each frame, same shape as the
-// existing player.invulnMs.
+// one). `apply` runs on pickup; invincibility just sets a countdown (ms)
+// that other systems below check each frame, same shape as the existing
+// player.invulnMs.
 const ITEM_DROP_CHANCE = 0.12;
 const INVINCIBILITY_ITEM_MS = 4000;
-const MAGNET_ITEM_MS = 6000;
-const MAGNET_PICKUP_RADIUS = 260;
 
 const DROP_TYPES = [
   {
@@ -118,7 +116,14 @@ const DROP_TYPES = [
     id: "magnet",
     emoji: "🧲",
     color: "#a78bfa",
-    apply: (p) => { p.magnetMs = MAGNET_ITEM_MS; },
+    // Instant burst instead of a timed pickup-radius buff: grabs every xp
+    // orb and dropped item currently on the field once, right away.
+    apply: (p) => {
+      for (const orb of xpOrbs) gainXp(orb.value);
+      xpOrbs = [];
+      for (const it of droppedItems) it.type.apply(p);
+      droppedItems = [];
+    },
   },
   {
     id: "bomb",
@@ -170,8 +175,8 @@ const LEVEL_UP_OPTIONS = [
   },
   {
     id: "lifesteal",
-    label: "흡혈 +8%",
-    apply: (p) => { p.lifesteal = Math.min(0.45, (p.lifesteal || 0) + 0.08); },
+    label: "흡혈 +3%",
+    apply: (p) => { p.lifesteal = Math.min(0.45, (p.lifesteal || 0) + 0.03); },
   },
 ];
 
@@ -400,7 +405,6 @@ function startClass(classKey) {
     attackCooldownMs: cfg.attackCooldownMs,
     attackTimerMs: 0,
     invulnMs: 0,
-    magnetMs: 0,
     regenPerSec: 0,
     lifesteal: 0,
   };
@@ -655,7 +659,6 @@ function frame(ts) {
 
   // enemies chase the player and hurt on contact
   if (player.invulnMs > 0) player.invulnMs -= dt * 1000;
-  if (player.magnetMs > 0) player.magnetMs -= dt * 1000;
   if (player.regenPerSec) player.hp = Math.min(player.maxHp, player.hp + player.regenPerSec * dt);
   for (const enemy of enemies) {
     const ddx = player.x - enemy.x;
@@ -698,18 +701,21 @@ function frame(ts) {
     if (enemy.hp <= 0) killEnemy(enemy);
   }
 
-  // xp orb + item pickup -- magnet temporarily widens the pickup radius
-  // instead of animating orbs flying toward the player, simplest way to get
-  // the "everything nearby gets sucked in" feel
-  const pickupRadius = player.magnetMs > 0 ? MAGNET_PICKUP_RADIUS : XP_PICKUP_RADIUS;
+  // xp orb + item pickup. The `includes()` checks guard against the magnet
+  // item: its apply() clears xpOrbs/droppedItems outright (see DROP_TYPES
+  // above), so if it's picked up in the same tick as other entries this
+  // loop already snapshotted, those entries are gone by the time we get to
+  // them here -- without the guard they'd get applied a second time.
   for (const orb of [...xpOrbs]) {
-    if (dist(player.x, player.y, orb.x, orb.y) <= pickupRadius) {
+    if (!xpOrbs.includes(orb)) continue;
+    if (dist(player.x, player.y, orb.x, orb.y) <= XP_PICKUP_RADIUS) {
       xpOrbs = xpOrbs.filter((o) => o !== orb);
       gainXp(orb.value);
     }
   }
   for (const item of [...droppedItems]) {
-    if (dist(player.x, player.y, item.x, item.y) <= pickupRadius) {
+    if (!droppedItems.includes(item)) continue;
+    if (dist(player.x, player.y, item.x, item.y) <= XP_PICKUP_RADIUS) {
       droppedItems = droppedItems.filter((d) => d !== item);
       item.type.apply(player);
       sfx.pickup();
@@ -752,13 +758,6 @@ function render() {
     ctx.fillText(item.type.emoji, item.x, item.y + 1);
   }
 
-  if (player.magnetMs > 0) {
-    ctx.strokeStyle = "rgba(167, 139, 250, 0.4)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, MAGNET_PICKUP_RADIUS, 0, Math.PI * 2);
-    ctx.stroke();
-  }
 
   for (const eff of meleeEffects) {
     const t = eff.ageMs / 250;
