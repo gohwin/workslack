@@ -245,6 +245,12 @@ const CLASS_SPECIAL_OPTIONS = {
       special: true,
       apply: (p) => { p.projectileCount = (p.projectileCount || 1) + 1; },
     },
+    {
+      id: "pierce",
+      label: "관통 +1",
+      special: true,
+      apply: (p) => { p.pierceCount = (p.pierceCount || 0) + 1; },
+    },
   ],
 };
 
@@ -487,6 +493,7 @@ function startClass(classKey) {
     meleeRadiusMult: 1, // warrior-only special (attack size)
     meleeAngleBonusDeg: 0, // warrior-only special (extra cone width, in degrees)
     projectileCount: 1, // mage-only special (extra projectiles)
+    pierceCount: 0, // mage-only special (extra enemies a projectile passes through)
     facingAngle: 0, // warrior-only: melee is a cone in front of this
   };
   enemies = [];
@@ -658,8 +665,9 @@ function renderStatsSidebar() {
     if (player.meleeAngleBonusDeg > 0) {
       rows.push(["각도", `${180 + player.meleeAngleBonusDeg}도`]);
     }
-  } else if (player.classKey === "mage" && player.projectileCount > 1) {
-    rows.push(["투사체 수", player.projectileCount]);
+  } else if (player.classKey === "mage") {
+    if (player.projectileCount > 1) rows.push(["투사체 수", player.projectileCount]);
+    if (player.pierceCount > 0) rows.push(["관통", `${player.pierceCount}회`]);
   }
   statsListEl.innerHTML = rows
     .map(([label, value]) => `<li><span>${label}</span><span>${value}</span></li>`)
@@ -745,6 +753,8 @@ function performAttack() {
         vx: (dx / len) * cfg.projectileSpeed,
         vy: (dy / len) * cfg.projectileSpeed,
         damage: player.attackDamage,
+        pierceLeft: player.pierceCount || 0,
+        hitEnemies: new Set(),
       });
     }
   }
@@ -835,12 +845,22 @@ function frame(ts) {
   projectiles = projectiles.filter(
     (p) => p.x > -20 && p.x < CANVAS_W + 20 && p.y > -20 && p.y < CANVAS_H + 20
   );
+  // The mage's "관통" (pierce) special lets a projectile pass through
+  // extra enemies instead of vanishing on its first hit -- p.hitEnemies
+  // stops it from re-hitting the same enemy on a later frame as it keeps
+  // traveling, and it's only actually removed once pierceLeft runs out.
   for (const p of [...projectiles]) {
     for (const enemy of enemies) {
+      if (p.hitEnemies.has(enemy)) continue;
       if (dist(p.x, p.y, enemy.x, enemy.y) <= enemy.radius + 4) {
         enemy.hp -= p.damage;
         applyLifesteal(p.damage);
-        projectiles = projectiles.filter((x) => x !== p);
+        p.hitEnemies.add(enemy);
+        if (p.pierceLeft > 0) {
+          p.pierceLeft -= 1;
+        } else {
+          projectiles = projectiles.filter((x) => x !== p);
+        }
         break;
       }
     }
