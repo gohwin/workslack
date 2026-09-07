@@ -466,6 +466,7 @@ function startClass(classKey) {
     lifesteal: 0,
     meleeRadiusMult: 1, // warrior-only boss reward (attack range)
     projectileCount: 1, // mage-only boss reward (extra projectiles)
+    facingAngle: 0, // warrior-only: melee is a 180-degree cone in front of this
   };
   enemies = [];
   projectiles = [];
@@ -667,14 +668,31 @@ function applyLifesteal(damage) {
   if (player.lifesteal) player.hp = Math.min(player.maxHp, player.hp + damage * player.lifesteal);
 }
 
+// Warrior's melee is a 180-degree cone in front of wherever the player is
+// currently facing (player.facingAngle, updated from movement direction),
+// not a full circle -- an earlier version hit everything around the player
+// regardless of angle, which the visual (a wedge) was misrepresenting
+// either way: a random-angle wedge looked like it should sometimes miss
+// enemies that were actually always hit, and a full-circle flash didn't
+// read as an aimable attack at all. Making the cone real (not just visual)
+// means facing your enemies now actually matters for the warrior.
+function angleWithinFacingCone(fromX, fromY, toX, toY, facingAngle) {
+  const angleToTarget = Math.atan2(toY - fromY, toX - fromX);
+  const diff = Math.atan2(Math.sin(angleToTarget - facingAngle), Math.cos(angleToTarget - facingAngle));
+  return Math.abs(diff) <= Math.PI / 2;
+}
+
 function performAttack() {
   const cfg = CLASS_CONFIG[player.classKey];
   sfx.attack();
   if (cfg.attackType === "melee") {
     const radius = cfg.meleeRadius * player.meleeRadiusMult;
-    meleeEffects.push({ x: player.x, y: player.y, radius, angle: Math.random() * Math.PI * 2, ageMs: 0 });
+    meleeEffects.push({ x: player.x, y: player.y, radius, angle: player.facingAngle, ageMs: 0 });
     for (const enemy of enemies) {
-      if (dist(player.x, player.y, enemy.x, enemy.y) <= radius + enemy.radius) {
+      if (
+        dist(player.x, player.y, enemy.x, enemy.y) <= radius + enemy.radius &&
+        angleWithinFacingCone(player.x, player.y, enemy.x, enemy.y, player.facingAngle)
+      ) {
         enemy.hp -= player.attackDamage;
         applyLifesteal(player.attackDamage);
       }
@@ -738,6 +756,7 @@ function frame(ts) {
     const d = Math.hypot(ddx, ddy);
     if (d > 4) { dx = ddx / d; dy = ddy / d; }
   }
+  if (dx !== 0 || dy !== 0) player.facingAngle = Math.atan2(dy, dx);
   player.x = Math.min(CANVAS_W - PLAYER_RADIUS, Math.max(PLAYER_RADIUS, player.x + dx * player.moveSpeed * dt));
   player.y = Math.min(CANVAS_H - PLAYER_RADIUS, Math.max(PLAYER_RADIUS, player.y + dy * player.moveSpeed * dt));
 
@@ -861,15 +880,15 @@ function render() {
   }
 
 
-  // Warrior's melee: a range ring (max reach) plus a wedge that spins a
-  // full 360 degrees instead of stopping partway -- the earlier version
-  // (a wedge that stopped at a fixed ~144 degrees from a random angle)
-  // looked like a partial-angle attack even though hit detection has
-  // always been a full circle around the player (performAttack()'s melee
-  // branch), so kills landing outside that fixed wedge read as the attack
-  // "missing" them. Sweeping the full circle keeps the dynamic
-  // spinning-blade look while actually representing a full-circle hit.
-  const SPIN_MS = 180; // the spin completes one full 360 within this window
+  // Warrior's melee: a range ring (max reach) plus the actual 180-degree
+  // hit cone (eff.angle is the facing direction, the cone spans +/-90
+  // degrees around it -- see angleWithinFacingCone() in performAttack()).
+  // This used to be a full-circle or spinning-360 visual while hit
+  // detection was omnidirectional; now that the cone is real (facing your
+  // enemies matters), the drawn wedge IS the hit boundary, not a rough
+  // approximation of one -- so it's outlined precisely rather than
+  // animated as a spin or flash.
+  const OPEN_MS = 90; // the cone opens to its full 180 degrees within this window
   for (const eff of meleeEffects) {
     const t = eff.ageMs / 250;
     const fade = 1 - t;
@@ -880,22 +899,19 @@ function render() {
     ctx.arc(eff.x, eff.y, eff.radius * (0.6 + 0.4 * t), 0, Math.PI * 2);
     ctx.stroke();
 
-    const spinT = Math.min(1, eff.ageMs / SPIN_MS);
-    const sweep = Math.PI * 2 * spinT;
-    ctx.fillStyle = `rgba(248, 113, 113, ${fade * 0.4})`;
-    ctx.beginPath();
-    ctx.moveTo(eff.x, eff.y);
-    ctx.arc(eff.x, eff.y, eff.radius, eff.angle, eff.angle + sweep);
-    ctx.closePath();
-    ctx.fill();
+    const openT = Math.min(1, eff.ageMs / OPEN_MS);
+    const halfSweep = (Math.PI / 2) * openT;
+    const startAngle = eff.angle - halfSweep;
+    const endAngle = eff.angle + halfSweep;
 
-    // bright blade tip at the leading edge of the spin
-    const tipAngle = eff.angle + sweep;
-    ctx.strokeStyle = `rgba(255, 255, 255, ${fade * 0.9})`;
-    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(eff.x, eff.y);
-    ctx.lineTo(eff.x + Math.cos(tipAngle) * eff.radius, eff.y + Math.sin(tipAngle) * eff.radius);
+    ctx.arc(eff.x, eff.y, eff.radius, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(248, 113, 113, ${fade * 0.4})`;
+    ctx.fill();
+    ctx.strokeStyle = `rgba(255, 255, 255, ${fade * 0.9})`;
+    ctx.lineWidth = 2;
     ctx.stroke();
   }
 
