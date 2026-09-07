@@ -35,6 +35,7 @@
 
   <div id="class-screen" class="class-screen">
     <p class="class-prompt">직업을 선택하세요 — 몰려오는 적 사이에서 최대한 오래 버티세요</p>
+    <p id="best-record" class="best-record"></p>
     <div class="class-group">
       <button class="class-btn" data-class="warrior">
         <span class="class-name">⚔️ 전사</span>
@@ -60,6 +61,8 @@
 
     <div class="canvas-wrapper">
       <canvas id="game-canvas" width="640" height="440"></canvas>
+
+      <div id="boss-banner" class="boss-banner" hidden>👹 보스 등장!</div>
 
       <div id="levelup-modal" class="levelup-modal" hidden>
         <div class="levelup-card">

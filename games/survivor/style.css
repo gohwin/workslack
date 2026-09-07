@@ -30,8 +30,16 @@ button:hover {
 
 .class-prompt {
   color: var(--text-muted);
-  margin: 0 0 20px;
+  margin: 0 0 8px;
   font-size: 1.05rem;
+}
+
+.best-record {
+  color: var(--accent-2);
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin: 0 0 20px;
+  min-height: 1.2em;
 }
 
 .class-group {
@@ -135,6 +143,31 @@ button:hover {
   color: var(--text-dim);
   font-size: 0.85rem;
   margin-top: 14px;
+}
+
+.boss-banner {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(127, 29, 29, 0.9);
+  border: 1px solid #ef4444;
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.1rem;
+  padding: 8px 20px;
+  border-radius: 999px;
+  pointer-events: none;
+  animation: boss-banner-pop 220ms ease;
+}
+
+.boss-banner[hidden] {
+  display: none;
+}
+
+@keyframes boss-banner-pop {
+  from { transform: translateX(-50%) scale(0.8); opacity: 0; }
+  to { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 
 .levelup-modal,

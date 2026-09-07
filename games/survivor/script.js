@@ -31,13 +31,36 @@ const CLASS_CONFIG = {
 const BASE_MOVE_SPEED = 160; // px/s
 const BASE_ATTACK_DAMAGE = 10;
 
-const ENEMY_RADIUS = 13;
 const ENEMY_BASE_HP = 20;
 const ENEMY_BASE_SPEED = 55; // px/s
-const ENEMY_CONTACT_DAMAGE = 10;
 const ENEMY_HP_PER_SEC = 0.18; // enemies slowly get tougher the longer you survive
 const ENEMY_SPEED_PER_SEC = 0.12;
 const ENEMY_SPEED_CAP = 130;
+
+// Each enemy is one of these. hpMult/speedMult apply on top of the
+// time-scaled base hp/speed above, so a speedster is always relatively
+// fast/fragile and a brute always relatively slow/tanky no matter how far
+// into a run you are.
+const ENEMY_TYPES = {
+  normal: { hpMult: 1, speedMult: 1, radius: 13, color: "#ef4444", contactDamage: 10, xpValue: 1 },
+  speedster: { hpMult: 0.5, speedMult: 1.8, radius: 10, color: "#fbbf24", contactDamage: 7, xpValue: 1 },
+  brute: { hpMult: 2.6, speedMult: 0.55, radius: 19, color: "#a855f7", contactDamage: 16, xpValue: 2 },
+  boss: { hpMult: 9, speedMult: 0.5, radius: 30, color: "#7f1d1d", contactDamage: 25, xpValue: 6 },
+};
+
+// Speedsters/brutes phase in over time instead of being available from
+// second 1 -- early game stays simple, variety shows up once there's
+// already some pressure.
+function pickEnemyType() {
+  const roll = Math.random();
+  if (elapsedSeconds < 20) return "normal";
+  if (elapsedSeconds < 45) return roll < 0.22 ? "speedster" : "normal";
+  if (roll < 0.2) return "brute";
+  if (roll < 0.42) return "speedster";
+  return "normal";
+}
+
+const BOSS_INTERVAL_SECONDS = 60;
 
 const SPAWN_START_MS = 1300;
 const SPAWN_MIN_MS = 380;
@@ -49,9 +72,10 @@ const XP_ORB_VALUE = 1;
 const XP_PICKUP_RADIUS = PLAYER_RADIUS + 10;
 
 // Special item drops -- separate from the always-on xp orb, each kill has a
-// small extra chance of also dropping one of these. `apply` runs on pickup;
-// invincibility/magnet just set a countdown (ms) that other systems below
-// check each frame, same shape as the existing player.invulnMs.
+// small extra chance of also dropping one of these (bosses always drop
+// one). `apply` runs on pickup; invincibility/magnet just set a countdown
+// (ms) that other systems below check each frame, same shape as the
+// existing player.invulnMs.
 const ITEM_DROP_CHANCE = 0.12;
 const INVINCIBILITY_ITEM_MS = 4000;
 const MAGNET_ITEM_MS = 6000;
@@ -109,6 +133,16 @@ const LEVEL_UP_OPTIONS = [
       p.hp = Math.min(p.maxHp, p.hp + inc);
     },
   },
+  {
+    id: "regen",
+    label: "체력 재생 +1/초",
+    apply: (p) => { p.regenPerSec = (p.regenPerSec || 0) + 1; },
+  },
+  {
+    id: "lifesteal",
+    label: "흡혈 +10%",
+    apply: (p) => { p.lifesteal = Math.min(0.5, (p.lifesteal || 0) + 0.1); },
+  },
 ];
 
 // Points are paused site-wide while more games get added, so nobody has to
@@ -116,8 +150,84 @@ const LEVEL_UP_OPTIONS = [
 // back to true (same everywhere else this flag appears) to resume scoring.
 const POINTS_ENABLED = false;
 
+const BEST_STORAGE_KEY = "survivor-best-record";
+
 function levelXpRequirement(level) {
   return 5 + level * 4;
+}
+
+// Tiny procedural sound effects via Web Audio -- no audio files to ship for
+// a handful of short blips. Browsers block audio until a user gesture, so
+// ensureAudioCtx() is also called directly from the class-select button's
+// click handler below to unlock it right away; every call here is wrapped
+// so a browser refusing audio for any reason never breaks gameplay.
+let audioCtx = null;
+function ensureAudioCtx() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  } catch {
+    return null;
+  }
+}
+function playTone(freq, durationMs, type, gainValue, delaySec) {
+  const ctxA = ensureAudioCtx();
+  if (!ctxA) return;
+  try {
+    const osc = ctxA.createOscillator();
+    const gain = ctxA.createGain();
+    osc.type = type || "sine";
+    osc.frequency.value = freq;
+    gain.gain.value = gainValue || 0.12;
+    osc.connect(gain).connect(ctxA.destination);
+    const start = ctxA.currentTime + (delaySec || 0);
+    osc.start(start);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + durationMs / 1000);
+    osc.stop(start + durationMs / 1000 + 0.03);
+  } catch {
+    // sound is a nice-to-have -- never let it interrupt gameplay
+  }
+}
+const sfx = {
+  attack: () => playTone(200, 60, "square", 0.05),
+  kill: (isBoss) => playTone(isBoss ? 180 : 440, isBoss ? 220 : 90, "square", isBoss ? 0.18 : 0.08),
+  pickup: () => playTone(880, 80, "sine", 0.1),
+  levelUp: () => {
+    playTone(523, 90, "sine", 0.14);
+    playTone(659, 90, "sine", 0.14, 0.09);
+    playTone(784, 160, "sine", 0.14, 0.18);
+  },
+  gameOver: () => {
+    playTone(392, 160, "sawtooth", 0.1);
+    playTone(261, 320, "sawtooth", 0.1, 0.16);
+  },
+  boss: () => {
+    playTone(140, 260, "sawtooth", 0.16);
+    playTone(110, 320, "sawtooth", 0.16, 0.1);
+  },
+};
+
+function loadBestRecord() {
+  try {
+    return JSON.parse(localStorage.getItem(BEST_STORAGE_KEY)) || null;
+  } catch {
+    return null;
+  }
+}
+function saveBestRecordIfBetter(seconds, lvl) {
+  try {
+    const cur = loadBestRecord();
+    if (!cur || seconds > cur.seconds) {
+      localStorage.setItem(BEST_STORAGE_KEY, JSON.stringify({ seconds, level: lvl }));
+    }
+  } catch {
+    // localStorage unavailable; ignore
+  }
+}
+function renderBestRecord() {
+  const best = loadBestRecord();
+  bestRecordEl.textContent = best ? `최고 기록: ${formatTime(best.seconds)} · Lv.${best.level}` : "";
 }
 
 let player = null;
@@ -133,6 +243,8 @@ let levelUpQueue = [];
 let levelUpModalOpen = false;
 let elapsedSeconds = 0;
 let spawnTimerMs = 0;
+let nextBossAt = BOSS_INTERVAL_SECONDS;
+let bossBannerTimer = null;
 let lastFrameTime = 0;
 let rafHandle = null;
 let running = false;
@@ -143,17 +255,19 @@ let pointerTarget = { x: CANVAS_W / 2, y: CANVAS_H / 2 };
 
 const classScreenEl = document.getElementById("class-screen");
 const gameScreenEl = document.getElementById("game-screen");
+const bestRecordEl = document.getElementById("best-record");
 const canvasEl = document.getElementById("game-canvas");
 const ctx = canvasEl.getContext("2d");
-// The canvas element's HTML width/height (440x440) is the game's logical
+// The canvas element's HTML width/height (640x440) is the game's logical
 // coordinate space -- everything below (player/enemy positions, radii,
-// speeds) is written in those units. CSS then displays it up to 680px wide
-// (see style.css), so without this the browser would just upscale a
-// 440x440 raster and every circle would come out visibly blurry/blocky.
-// Instead we bump the canvas's actual pixel buffer up and scale the
-// context to match, so drawing code keeps using the same 0-440 logical
-// coordinates but renders at a resolution sharp enough for the larger
-// display size (and for retina screens, via devicePixelRatio).
+// speeds) is written in those units. CSS then displays it up to ~980px
+// wide (see style.css / fitBoardToViewport below), so without this the
+// browser would just upscale a 640x440 raster and every circle would come
+// out visibly blurry/blocky. Instead we bump the canvas's actual pixel
+// buffer up and scale the context to match, so drawing code keeps using
+// the same logical coordinates but renders at a resolution sharp enough
+// for the larger display size (and for retina screens, via
+// devicePixelRatio).
 const RENDER_SCALE = Math.min(3, (window.devicePixelRatio || 1) * 1.6);
 canvasEl.width = CANVAS_W * RENDER_SCALE;
 canvasEl.height = CANVAS_H * RENDER_SCALE;
@@ -169,6 +283,9 @@ const resultSummaryEl = document.getElementById("result-summary");
 const resultPointsEl = document.getElementById("result-points");
 const canvasWrapperEl = document.querySelector(".canvas-wrapper");
 const barRowEl = document.querySelector(".bar-row");
+const bossBannerEl = document.getElementById("boss-banner");
+
+renderBestRecord();
 
 // Sizes the board to the largest width that still lets the whole page fit
 // in the viewport with no scrolling. An earlier version tried to do this in
@@ -243,6 +360,8 @@ function startClass(classKey) {
     attackTimerMs: 0,
     invulnMs: 0,
     magnetMs: 0,
+    regenPerSec: 0,
+    lifesteal: 0,
   };
   enemies = [];
   projectiles = [];
@@ -256,6 +375,7 @@ function startClass(classKey) {
   levelUpModalOpen = false;
   elapsedSeconds = 0;
   spawnTimerMs = 0;
+  nextBossAt = BOSS_INTERVAL_SECONDS;
   lastFrameTime = 0;
   pointerActive = false;
 
@@ -263,6 +383,7 @@ function startClass(classKey) {
   gameScreenEl.hidden = false;
   resultOverlayEl.hidden = true;
   levelupModalEl.hidden = true;
+  bossBannerEl.hidden = true;
   fitBoardToViewport();
   updateHud();
 
@@ -270,26 +391,47 @@ function startClass(classKey) {
   rafHandle = requestAnimationFrame(frame);
 }
 
-function spawnEnemy() {
+function spawnEnemy(forcedType) {
+  const typeKey = forcedType || pickEnemyType();
+  const type = ENEMY_TYPES[typeKey];
+
   const edge = Math.floor(Math.random() * 4);
   let x, y;
-  if (edge === 0) { x = Math.random() * CANVAS_W; y = -ENEMY_RADIUS; }
-  else if (edge === 1) { x = CANVAS_W + ENEMY_RADIUS; y = Math.random() * CANVAS_H; }
-  else if (edge === 2) { x = Math.random() * CANVAS_W; y = CANVAS_H + ENEMY_RADIUS; }
-  else { x = -ENEMY_RADIUS; y = Math.random() * CANVAS_H; }
+  if (edge === 0) { x = Math.random() * CANVAS_W; y = -type.radius; }
+  else if (edge === 1) { x = CANVAS_W + type.radius; y = Math.random() * CANVAS_H; }
+  else if (edge === 2) { x = Math.random() * CANVAS_W; y = CANVAS_H + type.radius; }
+  else { x = -type.radius; y = Math.random() * CANVAS_H; }
 
-  const hp = ENEMY_BASE_HP + elapsedSeconds * ENEMY_HP_PER_SEC;
-  const speed = Math.min(ENEMY_SPEED_CAP, ENEMY_BASE_SPEED + elapsedSeconds * ENEMY_SPEED_PER_SEC);
-  enemies.push({ x, y, hp, maxHp: hp, speed });
+  const baseHp = ENEMY_BASE_HP + elapsedSeconds * ENEMY_HP_PER_SEC;
+  const baseSpeed = Math.min(ENEMY_SPEED_CAP, ENEMY_BASE_SPEED + elapsedSeconds * ENEMY_SPEED_PER_SEC);
+  const hp = baseHp * type.hpMult;
+  const speed = baseSpeed * type.speedMult;
+
+  enemies.push({
+    x, y, hp, maxHp: hp, speed,
+    radius: type.radius,
+    color: type.color,
+    contactDamage: type.contactDamage,
+    xpValue: type.xpValue,
+    isBoss: typeKey === "boss",
+  });
+}
+
+function showBossBanner() {
+  bossBannerEl.hidden = false;
+  clearTimeout(bossBannerTimer);
+  bossBannerTimer = setTimeout(() => { bossBannerEl.hidden = true; }, 2200);
 }
 
 function killEnemy(enemy) {
   enemies = enemies.filter((e) => e !== enemy);
-  xpOrbs.push({ x: enemy.x, y: enemy.y, value: XP_ORB_VALUE });
-  if (Math.random() < ITEM_DROP_CHANCE) {
+  xpOrbs.push({ x: enemy.x, y: enemy.y, value: enemy.xpValue || XP_ORB_VALUE });
+  const dropChance = enemy.isBoss ? 1 : ITEM_DROP_CHANCE;
+  if (Math.random() < dropChance) {
     const type = DROP_TYPES[Math.floor(Math.random() * DROP_TYPES.length)];
     droppedItems.push({ x: enemy.x, y: enemy.y, type });
   }
+  sfx.kill(enemy.isBoss);
 }
 
 function gainXp(amount) {
@@ -309,6 +451,7 @@ function openNextLevelUp() {
   levelUpModalOpen = true;
   running = false;
   if (rafHandle) cancelAnimationFrame(rafHandle);
+  sfx.levelUp();
 
   levelupOptionsEl.innerHTML = "";
   for (const opt of LEVEL_UP_OPTIONS) {
@@ -335,13 +478,19 @@ function pickLevelUpOption(opt) {
   }
 }
 
+function applyLifesteal(damage) {
+  if (player.lifesteal) player.hp = Math.min(player.maxHp, player.hp + damage * player.lifesteal);
+}
+
 function performAttack() {
   const cfg = CLASS_CONFIG[player.classKey];
+  sfx.attack();
   if (cfg.attackType === "melee") {
     meleeEffects.push({ x: player.x, y: player.y, radius: cfg.meleeRadius, ageMs: 0 });
     for (const enemy of enemies) {
-      if (dist(player.x, player.y, enemy.x, enemy.y) <= cfg.meleeRadius + ENEMY_RADIUS) {
+      if (dist(player.x, player.y, enemy.x, enemy.y) <= cfg.meleeRadius + enemy.radius) {
         enemy.hp -= player.attackDamage;
+        applyLifesteal(player.attackDamage);
       }
     }
     for (const enemy of [...enemies]) {
@@ -406,18 +555,25 @@ function frame(ts) {
     spawnTimerMs = 0;
     spawnEnemy();
   }
+  if (elapsedSeconds >= nextBossAt) {
+    spawnEnemy("boss");
+    showBossBanner();
+    sfx.boss();
+    nextBossAt += BOSS_INTERVAL_SECONDS;
+  }
 
   // enemies chase the player and hurt on contact
   if (player.invulnMs > 0) player.invulnMs -= dt * 1000;
   if (player.magnetMs > 0) player.magnetMs -= dt * 1000;
+  if (player.regenPerSec) player.hp = Math.min(player.maxHp, player.hp + player.regenPerSec * dt);
   for (const enemy of enemies) {
     const ddx = player.x - enemy.x;
     const ddy = player.y - enemy.y;
     const d = Math.hypot(ddx, ddy) || 1;
     enemy.x += (ddx / d) * enemy.speed * dt;
     enemy.y += (ddy / d) * enemy.speed * dt;
-    if (d <= PLAYER_RADIUS + ENEMY_RADIUS && player.invulnMs <= 0) {
-      player.hp -= ENEMY_CONTACT_DAMAGE;
+    if (d <= PLAYER_RADIUS + enemy.radius && player.invulnMs <= 0) {
+      player.hp -= enemy.contactDamage;
       player.invulnMs = PLAYER_HIT_INVULN_MS;
     }
   }
@@ -439,8 +595,9 @@ function frame(ts) {
   );
   for (const p of [...projectiles]) {
     for (const enemy of enemies) {
-      if (dist(p.x, p.y, enemy.x, enemy.y) <= ENEMY_RADIUS + 4) {
+      if (dist(p.x, p.y, enemy.x, enemy.y) <= enemy.radius + 4) {
         enemy.hp -= p.damage;
+        applyLifesteal(p.damage);
         projectiles = projectiles.filter((x) => x !== p);
         break;
       }
@@ -464,6 +621,7 @@ function frame(ts) {
     if (dist(player.x, player.y, item.x, item.y) <= pickupRadius) {
       droppedItems = droppedItems.filter((d) => d !== item);
       item.type.apply(player);
+      sfx.pickup();
     }
   }
 
@@ -521,10 +679,15 @@ function render() {
   }
 
   for (const enemy of enemies) {
-    ctx.fillStyle = "#ef4444";
+    ctx.fillStyle = enemy.color;
     ctx.beginPath();
-    ctx.arc(enemy.x, enemy.y, ENEMY_RADIUS, 0, Math.PI * 2);
+    ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
     ctx.fill();
+    if (enemy.isBoss) {
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
   }
 
   for (const p of projectiles) {
@@ -548,6 +711,9 @@ async function endGame() {
   running = false;
   if (rafHandle) cancelAnimationFrame(rafHandle);
   rafHandle = null;
+  sfx.gameOver();
+
+  saveBestRecordIfBetter(Math.floor(elapsedSeconds), level);
 
   resultOverlayEl.hidden = false;
   resultSummaryEl.textContent = `${CLASS_CONFIG[player.classKey].label} · 생존 ${formatTime(elapsedSeconds)} · Lv.${level}`;
@@ -567,10 +733,14 @@ function backToClassSelect() {
   if (rafHandle) cancelAnimationFrame(rafHandle);
   gameScreenEl.hidden = true;
   classScreenEl.hidden = false;
+  renderBestRecord();
 }
 
 document.querySelectorAll(".class-btn").forEach((btn) => {
-  btn.addEventListener("click", () => startClass(btn.dataset.class));
+  btn.addEventListener("click", () => {
+    ensureAudioCtx(); // unlock audio here, inside a real user gesture
+    startClass(btn.dataset.class);
+  });
 });
 document.getElementById("result-close-btn").addEventListener("click", backToClassSelect);
 
