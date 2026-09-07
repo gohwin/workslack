@@ -48,6 +48,42 @@ const PLAYER_HIT_INVULN_MS = 500;
 const XP_ORB_VALUE = 1;
 const XP_PICKUP_RADIUS = PLAYER_RADIUS + 10;
 
+// Special item drops -- separate from the always-on xp orb, each kill has a
+// small extra chance of also dropping one of these. `apply` runs on pickup;
+// invincibility/magnet just set a countdown (ms) that other systems below
+// check each frame, same shape as the existing player.invulnMs.
+const ITEM_DROP_CHANCE = 0.12;
+const INVINCIBILITY_ITEM_MS = 4000;
+const MAGNET_ITEM_MS = 6000;
+const MAGNET_PICKUP_RADIUS = 260;
+
+const DROP_TYPES = [
+  {
+    id: "heal",
+    emoji: "❤️",
+    color: "#4ade80",
+    apply: (p) => { p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.25)); },
+  },
+  {
+    id: "invincible",
+    emoji: "🛡️",
+    color: "#facc15",
+    apply: (p) => { p.invulnMs = Math.max(p.invulnMs, INVINCIBILITY_ITEM_MS); },
+  },
+  {
+    id: "magnet",
+    emoji: "🧲",
+    color: "#a78bfa",
+    apply: (p) => { p.magnetMs = MAGNET_ITEM_MS; },
+  },
+  {
+    id: "bomb",
+    emoji: "💣",
+    color: "#f97316",
+    apply: () => { for (const e of [...enemies]) killEnemy(e); },
+  },
+];
+
 const LEVEL_UP_OPTIONS = [
   {
     id: "damage",
@@ -88,6 +124,7 @@ let player = null;
 let enemies = [];
 let projectiles = [];
 let xpOrbs = [];
+let droppedItems = []; // { x, y, type }
 let meleeEffects = []; // { x, y, radius, ageMs }
 let level = 1;
 let xp = 0;
@@ -156,10 +193,12 @@ function startClass(classKey) {
     attackCooldownMs: cfg.attackCooldownMs,
     attackTimerMs: 0,
     invulnMs: 0,
+    magnetMs: 0,
   };
   enemies = [];
   projectiles = [];
   xpOrbs = [];
+  droppedItems = [];
   meleeEffects = [];
   level = 1;
   xp = 0;
@@ -197,6 +236,10 @@ function spawnEnemy() {
 function killEnemy(enemy) {
   enemies = enemies.filter((e) => e !== enemy);
   xpOrbs.push({ x: enemy.x, y: enemy.y, value: XP_ORB_VALUE });
+  if (Math.random() < ITEM_DROP_CHANCE) {
+    const type = DROP_TYPES[Math.floor(Math.random() * DROP_TYPES.length)];
+    droppedItems.push({ x: enemy.x, y: enemy.y, type });
+  }
 }
 
 function gainXp(amount) {
@@ -316,6 +359,7 @@ function frame(ts) {
 
   // enemies chase the player and hurt on contact
   if (player.invulnMs > 0) player.invulnMs -= dt * 1000;
+  if (player.magnetMs > 0) player.magnetMs -= dt * 1000;
   for (const enemy of enemies) {
     const ddx = player.x - enemy.x;
     const ddy = player.y - enemy.y;
@@ -356,11 +400,20 @@ function frame(ts) {
     if (enemy.hp <= 0) killEnemy(enemy);
   }
 
-  // xp orb pickup
+  // xp orb + item pickup -- magnet temporarily widens the pickup radius
+  // instead of animating orbs flying toward the player, simplest way to get
+  // the "everything nearby gets sucked in" feel
+  const pickupRadius = player.magnetMs > 0 ? MAGNET_PICKUP_RADIUS : XP_PICKUP_RADIUS;
   for (const orb of [...xpOrbs]) {
-    if (dist(player.x, player.y, orb.x, orb.y) <= XP_PICKUP_RADIUS) {
+    if (dist(player.x, player.y, orb.x, orb.y) <= pickupRadius) {
       xpOrbs = xpOrbs.filter((o) => o !== orb);
       gainXp(orb.value);
+    }
+  }
+  for (const item of [...droppedItems]) {
+    if (dist(player.x, player.y, item.x, item.y) <= pickupRadius) {
+      droppedItems = droppedItems.filter((d) => d !== item);
+      item.type.apply(player);
     }
   }
 
@@ -387,6 +440,25 @@ function render() {
     ctx.beginPath();
     ctx.arc(orb.x, orb.y, 5, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  for (const item of droppedItems) {
+    ctx.fillStyle = item.type.color;
+    ctx.beginPath();
+    ctx.arc(item.x, item.y, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = "13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(item.type.emoji, item.x, item.y + 1);
+  }
+
+  if (player.magnetMs > 0) {
+    ctx.strokeStyle = "rgba(167, 139, 250, 0.4)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, MAGNET_PICKUP_RADIUS, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   for (const eff of meleeEffects) {
