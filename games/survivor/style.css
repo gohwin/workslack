@@ -74,6 +74,21 @@ button:hover {
 
 /* Game screen */
 
+.game-screen {
+  /* Everything on this screen besides the canvas itself: site header, back
+     link, title, status bar, hp/xp bars, hint text, body padding. Used
+     below to size the board off *remaining* viewport height, not just
+     width -- otherwise a wide-but-short window (or browser zoom) makes the
+     board taller than the screen and pushes the level-up modal/result
+     overlay off-screen under a scrollbar instead of shrinking to fit. */
+  --chrome-h: 385px;
+  /* Largest the board can be while (a) never exceeding 990px, (b) fitting
+     94% of viewport width, and (c) leaving --chrome-h of vertical room --
+     i.e. the biggest square-ish box that still fits on screen with no
+     scrolling, floored at 240px so a very short window doesn't collapse it. */
+  --board-w: min(990px, 94vw, max(240px, calc((100vh - var(--chrome-h)) * 640 / 440)));
+}
+
 .status-bar {
   display: flex;
   justify-content: center;
@@ -88,7 +103,7 @@ button:hover {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-width: 990px;
+  max-width: var(--board-w);
   margin: 0 auto 12px;
 }
 
@@ -115,9 +130,7 @@ button:hover {
 
 .canvas-wrapper {
   position: relative;
-  /* 990px wide at a 640:440 aspect ratio works out to ~680px tall --
-     matches the vertical size from before this went landscape. */
-  width: min(990px, 94vw);
+  width: var(--board-w);
   margin: 0 auto;
 }
 
