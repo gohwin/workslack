@@ -83,6 +83,15 @@ button:hover {
   gap: 24px;
 }
 
+/* Without this, the [hidden] attribute loses to this file's own
+   `.game-screen { display: flex }` -- same specificity, but an author
+   rule always beats the UA stylesheet's `[hidden] { display: none }`
+   regardless of tie-breaking, so the class-select and game screens would
+   render stacked on top of each other instead of one replacing the other. */
+.game-screen[hidden] {
+  display: none;
+}
+
 .game-main {
   display: flex;
   flex-direction: column;
