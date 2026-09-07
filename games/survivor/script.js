@@ -49,8 +49,11 @@ const ENEMY_SPEED_CAP = 130;
 // into a run you are.
 const ENEMY_TYPES = {
   normal: { hpMult: 1, speedMult: 1, radius: 13, color: "#ef4444", contactDamage: 10, xpValue: 1 },
-  speedster: { hpMult: 0.5, speedMult: 1.8, radius: 10, color: "#fbbf24", contactDamage: 7, xpValue: 1 },
-  brute: { hpMult: 2.6, speedMult: 0.55, radius: 19, color: "#a855f7", contactDamage: 16, xpValue: 2 },
+  // Buffed alongside pushing their unlock a boss kill later each (see
+  // pickEnemyType()) -- showing up later is the tradeoff for hitting
+  // harder/tougher once they do.
+  speedster: { hpMult: 0.65, speedMult: 2, radius: 10, color: "#fbbf24", contactDamage: 9, xpValue: 1 },
+  brute: { hpMult: 3.2, speedMult: 0.6, radius: 19, color: "#a855f7", contactDamage: 20, xpValue: 2 },
   // hpMult was 9 at first -- at the first boss (60s in) that's ~277 hp
   // against a base warrior doing 10 dmg/0.7s (~14 dps), so killing it took
   // ~20s of uninterrupted melee uptime while normal spawns kept adding
@@ -61,14 +64,15 @@ const ENEMY_TYPES = {
   boss: { hpMult: 4, speedMult: 0.5, radius: 30, color: "#7f1d1d", contactDamage: 18, xpValue: 6 },
 };
 
-// Speedsters/brutes phase in on boss kills instead of a fixed clock --
-// the first boss kill unlocks speedsters, the second unlocks brutes too.
-// Ties enemy variety to progress instead of just how long the run has
-// been going.
+// Speedsters/brutes phase in on boss kills instead of a fixed clock -- the
+// SECOND boss kill unlocks speedsters, the third unlocks brutes too (pushed
+// back a boss kill later than before, in exchange for the stronger
+// ENEMY_TYPES numbers above). Ties enemy variety to progress instead of
+// just how long the run has been going.
 function pickEnemyType() {
   const roll = Math.random();
-  if (bossesKilled < 1) return "normal";
-  if (bossesKilled < 2) return roll < 0.22 ? "speedster" : "normal";
+  if (bossesKilled < 2) return "normal";
+  if (bossesKilled < 3) return roll < 0.22 ? "speedster" : "normal";
   if (roll < 0.2) return "brute";
   if (roll < 0.42) return "speedster";
   return "normal";
@@ -98,7 +102,7 @@ const XP_PICKUP_RADIUS = PLAYER_RADIUS + 10;
 // one). `apply` runs on pickup; invincibility just sets a countdown (ms)
 // that other systems below check each frame, same shape as the existing
 // player.invulnMs.
-const ITEM_DROP_CHANCE = 0.12;
+const ITEM_DROP_CHANCE = 0.05;
 const INVINCIBILITY_ITEM_MS = 4000;
 
 const DROP_TYPES = [
@@ -409,9 +413,11 @@ const resultPointsEl = document.getElementById("result-points");
 const canvasWrapperEl = document.querySelector(".canvas-wrapper");
 const barRowEl = document.querySelector(".bar-row");
 const bossBannerEl = document.getElementById("boss-banner");
-const statsSidebarEl = document.getElementById("stats-sidebar");
+const myStatsSidebarEl = document.getElementById("my-stats-sidebar");
+const enemyStatsSidebarEl = document.getElementById("enemy-stats-sidebar");
 const statsListEl = document.getElementById("stats-list");
-const enemyStatsListEl = document.getElementById("enemy-stats-list");
+const enemyGeneralListEl = document.getElementById("enemy-general-list");
+const enemyTypeGroupsEl = document.getElementById("enemy-type-groups");
 
 renderBestRecord();
 
@@ -437,12 +443,13 @@ function fitBoardToViewport() {
   // comes out comfortably smaller than the theoretical max instead of
   // brushing right up against the edge of what fits.
   const availableHeight = Math.max(200, window.innerHeight - wrapperTop - bottomPadding - 20);
-  // The stats sidebar (see .stats-sidebar in style.css) sits beside the
+  // The two stats sidebars (see .stats-sidebar in style.css) flank the
   // board via flex, only actually shown once the viewport is wide enough --
-  // when it is, its width + the flex gap has to come out of the board's
-  // width budget too, or the two would overflow the viewport together.
-  const sidebarVisible = getComputedStyle(statsSidebarEl).display !== "none";
-  const sidebarReserved = sidebarVisible ? statsSidebarEl.offsetWidth + 24 : 0;
+  // when they are, each one's width + its flex gap has to come out of the
+  // board's width budget too, or they'd all overflow the viewport together.
+  const sidebarReserved = [myStatsSidebarEl, enemyStatsSidebarEl].reduce((sum, el) => {
+    return getComputedStyle(el).display !== "none" ? sum + el.offsetWidth + 24 : sum;
+  }, 0);
   const maxWidthByViewport = Math.min(980, window.innerWidth * 0.94 - sidebarReserved);
   const widthByHeight = availableHeight * (CANVAS_W / CANVAS_H);
   const width = Math.max(240, Math.min(maxWidthByViewport, widthByHeight));
@@ -693,26 +700,54 @@ function renderStatsSidebar() {
     .join("");
 }
 
+const ENEMY_TYPE_LABELS = { normal: "일반", speedster: "스피드형", brute: "브루트" };
+
 // Mirrors renderStatsSidebar() but for what the enemies are currently doing
 // -- everything here is the same math spawnEnemy()/currentSpawnIntervalMs()
 // use, just surfaced live so "it's escalating" isn't only felt, it's seen.
+// A single "기본 체력/이동속도" row used to stand in for every enemy type at
+// once, which only ever actually described "normal" -- once speedster/brute
+// unlock (see pickEnemyType()) there was no way to tell their real hp/speed
+// apart, so this now renders one group per currently-unlocked type with its
+// own numbers (hpMult/speedMult from ENEMY_TYPES applied on top of the same
+// time-scaled base spawnEnemy() uses).
 function renderEnemyStatsSidebar() {
-  const baseHp = Math.round(ENEMY_BASE_HP + elapsedSeconds * ENEMY_HP_PER_SEC);
-  const baseSpeed = Math.round(Math.min(ENEMY_SPEED_CAP, ENEMY_BASE_SPEED + elapsedSeconds * ENEMY_SPEED_PER_SEC));
+  const baseHp = ENEMY_BASE_HP + elapsedSeconds * ENEMY_HP_PER_SEC;
+  const baseSpeed = Math.min(ENEMY_SPEED_CAP, ENEMY_BASE_SPEED + elapsedSeconds * ENEMY_SPEED_PER_SEC);
   const spawnSec = (currentSpawnIntervalMs() / 1000).toFixed(2);
-  const variety = bossesKilled < 1 ? "일반" : bossesKilled < 2 ? "일반 + 스피드형" : "일반 + 스피드형 + 브루트";
   const bossAlive = enemies.some((e) => e.isBoss);
   const bossStatus = bossAlive ? "전투 중!" : `${Math.max(0, Math.ceil(nextBossAt - elapsedSeconds))}초 후`;
 
-  const rows = [
-    ["기본 체력", baseHp],
-    ["기본 이동속도", baseSpeed],
+  const generalRows = [
     ["스폰 간격", `${spawnSec}초`],
-    ["종류", variety],
     ["다음 보스", bossStatus],
   ];
-  enemyStatsListEl.innerHTML = rows
+  enemyGeneralListEl.innerHTML = generalRows
     .map(([label, value]) => `<li><span>${label}</span><span>${value}</span></li>`)
+    .join("");
+
+  const unlockedTypeKeys = ["normal"];
+  if (bossesKilled >= 2) unlockedTypeKeys.push("speedster");
+  if (bossesKilled >= 3) unlockedTypeKeys.push("brute");
+
+  enemyTypeGroupsEl.innerHTML = unlockedTypeKeys
+    .map((key) => {
+      const type = ENEMY_TYPES[key];
+      const hp = Math.round(baseHp * type.hpMult);
+      const speed = Math.round(baseSpeed * type.speedMult);
+      const typeRows = [
+        ["체력", hp],
+        ["이동속도", speed],
+        ["접촉 피해", type.contactDamage],
+      ];
+      return `
+        <div class="enemy-type-group">
+          <p class="enemy-type-name"><span class="enemy-type-dot" style="background:${type.color}"></span>${ENEMY_TYPE_LABELS[key]}</p>
+          <ul class="stats-list">
+            ${typeRows.map(([label, value]) => `<li><span>${label}</span><span>${value}</span></li>`).join("")}
+          </ul>
+        </div>`;
+    })
     .join("");
 }
 

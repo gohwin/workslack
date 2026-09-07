@@ -80,6 +80,11 @@
   </div>
 
   <div id="game-screen" class="game-screen" hidden>
+    <div id="my-stats-sidebar" class="stats-sidebar">
+      <p class="stats-sidebar-title">📊 내 스탯</p>
+      <ul id="stats-list" class="stats-list"></ul>
+    </div>
+
     <div class="game-main">
       <div class="status-bar">
         <span id="time-label">00:00</span>
@@ -121,11 +126,10 @@
       </div>
     </div>
 
-    <div id="stats-sidebar" class="stats-sidebar">
-      <p class="stats-sidebar-title">📊 내 스탯</p>
-      <ul id="stats-list" class="stats-list"></ul>
-      <p class="stats-sidebar-title stats-sidebar-title--enemy">⚔️ 적 정보</p>
-      <ul id="enemy-stats-list" class="stats-list"></ul>
+    <div id="enemy-stats-sidebar" class="stats-sidebar">
+      <p class="stats-sidebar-title">⚔️ 적 정보</p>
+      <ul id="enemy-general-list" class="stats-list"></ul>
+      <div id="enemy-type-groups" class="enemy-type-groups"></div>
     </div>
   </div>
 

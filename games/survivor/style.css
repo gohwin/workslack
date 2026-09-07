@@ -164,11 +164,11 @@ button:hover {
 
 /* Game screen */
 
-/* Canvas + HUD column and the always-on stats sidebar sit side by side in
-   whatever blank space the viewport has next to the board -- the sidebar
-   only actually shows once there's room (see media query on
-   .stats-sidebar below), so on narrower screens this just centers
-   .game-main alone like before. */
+/* Canvas + HUD column sits in the middle with a stats sidebar flanking it
+   on each side (내 스탯 left, 적 정보 right) -- DOM order controls left vs.
+   right, flex just lays out whatever's actually visible. Both sidebars
+   only actually show once there's room (see media query on .stats-sidebar
+   below), so on narrower screens this just centers .game-main alone. */
 .game-screen {
   display: flex;
   justify-content: center;
@@ -215,8 +215,10 @@ button:hover {
 }
 
 /* Only enough room next to a reasonably-sized board to not feel cramped --
-   below this it stays hidden rather than fighting the canvas for width. */
-@media (min-width: 1150px) {
+   below this both sidebars stay hidden rather than squeezing the canvas.
+   Raised from the old single-sidebar breakpoint (1150px) since there are
+   now two 200px sidebars + two flex gaps to fit alongside the board. */
+@media (min-width: 1300px) {
   .stats-sidebar {
     display: block;
   }
@@ -227,10 +229,32 @@ button:hover {
   font-weight: 700;
 }
 
-.stats-sidebar-title--enemy {
-  margin-top: 18px;
-  padding-top: 14px;
+.enemy-type-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.enemy-type-group {
+  padding-top: 12px;
   border-top: 1px solid var(--border);
+}
+
+.enemy-type-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.enemy-type-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .stats-list {
