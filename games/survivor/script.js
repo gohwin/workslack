@@ -18,23 +18,24 @@ const CLASS_CONFIG = {
   warrior: {
     label: "전사",
     attackType: "melee",
-    attackCooldownMs: 700,
-    baseAttackDamage: 16,
+    attackCooldownMs: 1000,
+    baseAttackDamage: 20,
+    baseMaxHp: 150,
     meleeRadius: 78,
     color: "#f87171",
   },
   mage: {
     label: "마법사",
     attackType: "ranged",
-    attackCooldownMs: 480,
+    attackCooldownMs: 500,
     baseAttackDamage: 10,
+    baseMaxHp: 100,
     projectileSpeed: 340,
     color: "#22d3ee",
   },
 };
 
-const BASE_MOVE_SPEED = 170; // px/s
-const BASE_MAX_HP = 120;
+const BASE_MOVE_SPEED = 200; // px/s
 
 const ENEMY_BASE_HP = 20;
 const ENEMY_BASE_SPEED = 55; // px/s
@@ -141,7 +142,7 @@ const DROP_TYPES = [
 // numbers (attackDamage 381 by level 20) well before the enemy scaling
 // (linear in time) could keep up. Pulled the percentages back down hard
 // and moved the power into higher base stats instead (see
-// CLASS_CONFIG.baseAttackDamage/BASE_MOVE_SPEED/BASE_MAX_HP above), which
+// CLASS_CONFIG.baseAttackDamage/baseMaxHp and BASE_MOVE_SPEED above), which
 // only ever apply once and can't snowball the same way.
 const LEVEL_UP_OPTIONS = [
   {
@@ -472,8 +473,8 @@ function startClass(classKey) {
     classKey,
     x: CANVAS_W / 2,
     y: CANVAS_H / 2,
-    hp: BASE_MAX_HP,
-    maxHp: BASE_MAX_HP,
+    hp: cfg.baseMaxHp,
+    maxHp: cfg.baseMaxHp,
     moveSpeed: BASE_MOVE_SPEED,
     attackDamage: cfg.baseAttackDamage,
     attackCooldownMs: cfg.attackCooldownMs,
