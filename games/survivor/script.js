@@ -61,13 +61,14 @@ const ENEMY_TYPES = {
   boss: { hpMult: 4, speedMult: 0.5, radius: 30, color: "#7f1d1d", contactDamage: 18, xpValue: 6 },
 };
 
-// Speedsters/brutes phase in over time instead of being available from
-// second 1 -- early game stays simple, variety shows up once there's
-// already some pressure.
+// Speedsters/brutes phase in on boss kills instead of a fixed clock --
+// the first boss kill unlocks speedsters, the second unlocks brutes too.
+// Ties enemy variety to progress instead of just how long the run has
+// been going.
 function pickEnemyType() {
   const roll = Math.random();
-  if (elapsedSeconds < 20) return "normal";
-  if (elapsedSeconds < 45) return roll < 0.22 ? "speedster" : "normal";
+  if (bossesKilled < 1) return "normal";
+  if (bossesKilled < 2) return roll < 0.22 ? "speedster" : "normal";
   if (roll < 0.2) return "brute";
   if (roll < 0.42) return "speedster";
   return "normal";
@@ -361,6 +362,7 @@ let choiceModalOpen = false;
 let elapsedSeconds = 0;
 let spawnTimerMs = 0;
 let nextBossAt = BOSS_INTERVAL_SECONDS;
+let bossesKilled = 0; // gates speedster/brute variety -- see pickEnemyType()
 let bossBannerTimer = null;
 let lastFrameTime = 0;
 let rafHandle = null;
@@ -523,6 +525,7 @@ function startClass(classKey, allocation) {
   elapsedSeconds = 0;
   spawnTimerMs = 0;
   nextBossAt = BOSS_INTERVAL_SECONDS;
+  bossesKilled = 0;
   lastFrameTime = 0;
   pointerActive = false;
 
@@ -581,6 +584,7 @@ function killEnemy(enemy) {
   }
   sfx.kill(enemy.isBoss);
   if (enemy.isBoss) {
+    bossesKilled++; // unlocks the next enemy variety in pickEnemyType()
     choiceQueue.push({ type: "boss" });
     if (!choiceModalOpen) openNextChoice();
   }
@@ -696,7 +700,7 @@ function renderEnemyStatsSidebar() {
   const baseHp = Math.round(ENEMY_BASE_HP + elapsedSeconds * ENEMY_HP_PER_SEC);
   const baseSpeed = Math.round(Math.min(ENEMY_SPEED_CAP, ENEMY_BASE_SPEED + elapsedSeconds * ENEMY_SPEED_PER_SEC));
   const spawnSec = (currentSpawnIntervalMs() / 1000).toFixed(2);
-  const variety = elapsedSeconds < 20 ? "일반" : elapsedSeconds < 45 ? "일반 + 스피드형" : "일반 + 스피드형 + 브루트";
+  const variety = bossesKilled < 1 ? "일반" : bossesKilled < 2 ? "일반 + 스피드형" : "일반 + 스피드형 + 브루트";
   const bossAlive = enemies.some((e) => e.isBoss);
   const bossStatus = bossAlive ? "전투 중!" : `${Math.max(0, Math.ceil(nextBossAt - elapsedSeconds))}초 후`;
 
