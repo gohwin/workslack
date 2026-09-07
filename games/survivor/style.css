@@ -88,7 +88,7 @@ button:hover {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-width: 440px;
+  max-width: 680px;
   margin: 0 auto 12px;
 }
 
@@ -115,7 +115,7 @@ button:hover {
 
 .canvas-wrapper {
   position: relative;
-  width: min(440px, 94vw);
+  width: min(680px, 94vw);
   margin: 0 auto;
 }
 

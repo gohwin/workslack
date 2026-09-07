@@ -145,6 +145,19 @@ const classScreenEl = document.getElementById("class-screen");
 const gameScreenEl = document.getElementById("game-screen");
 const canvasEl = document.getElementById("game-canvas");
 const ctx = canvasEl.getContext("2d");
+// The canvas element's HTML width/height (440x440) is the game's logical
+// coordinate space -- everything below (player/enemy positions, radii,
+// speeds) is written in those units. CSS then displays it up to 680px wide
+// (see style.css), so without this the browser would just upscale a
+// 440x440 raster and every circle would come out visibly blurry/blocky.
+// Instead we bump the canvas's actual pixel buffer up and scale the
+// context to match, so drawing code keeps using the same 0-440 logical
+// coordinates but renders at a resolution sharp enough for the larger
+// display size (and for retina screens, via devicePixelRatio).
+const RENDER_SCALE = Math.min(3, (window.devicePixelRatio || 1) * 1.6);
+canvasEl.width = CANVAS_W * RENDER_SCALE;
+canvasEl.height = CANVAS_H * RENDER_SCALE;
+ctx.scale(RENDER_SCALE, RENDER_SCALE);
 const timeLabelEl = document.getElementById("time-label");
 const levelLabelEl = document.getElementById("level-label");
 const hpFillEl = document.getElementById("hp-fill");
@@ -172,8 +185,10 @@ function dist(ax, ay, bx, by) {
 
 function getCanvasPoint(e) {
   const rect = canvasEl.getBoundingClientRect();
-  const scaleX = canvasEl.width / rect.width;
-  const scaleY = canvasEl.height / rect.height;
+  // Map to the logical CANVAS_W/CANVAS_H coordinate space (what game code
+  // uses), not the raster pixel buffer -- those differ now by RENDER_SCALE.
+  const scaleX = CANVAS_W / rect.width;
+  const scaleY = CANVAS_H / rect.height;
   return {
     x: (e.clientX - rect.left) * scaleX,
     y: (e.clientY - rect.top) * scaleY,
