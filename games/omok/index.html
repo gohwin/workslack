@@ -44,6 +44,16 @@
     <p class="lobby-sub">봇과 바로 두거나, 방을 만들어서 친구와 1대1로 즐기세요.</p>
 
     <div class="lobby-actions">
+      <p class="color-choice-label">내 돌 선택</p>
+      <div class="color-choice-row">
+        <button id="color-black-btn" class="color-choice-btn is-selected" data-color="host">
+          <span class="stone-dot stone-dot-black"></span>흑 (선공)
+        </button>
+        <button id="color-white-btn" class="color-choice-btn" data-color="guest">
+          <span class="stone-dot stone-dot-white"></span>백 (후공)
+        </button>
+      </div>
+
       <div class="bot-difficulty-row">
         <button id="bot-game-easy-btn" class="lobby-primary-btn bot-easy-btn">🤖 봇과 대전 (쉬움)</button>
         <button id="bot-game-hard-btn" class="lobby-primary-btn bot-hard-btn">🤖 봇과 대전 (어려움)</button>

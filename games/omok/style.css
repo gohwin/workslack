@@ -65,6 +65,34 @@ button:disabled {
   padding: 24px;
 }
 
+.color-choice-label {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.color-choice-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.color-choice-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0;
+  font-size: 0.9rem;
+}
+
+.color-choice-btn.is-selected {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 1px var(--accent-2);
+}
+
 .bot-difficulty-row {
   display: flex;
   flex-direction: column;

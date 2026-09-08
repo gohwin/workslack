@@ -19,6 +19,8 @@ const lobbyScreenEl = document.getElementById("lobby-screen");
 const waitingScreenEl = document.getElementById("waiting-screen");
 const gameScreenEl = document.getElementById("game-screen");
 
+const colorBlackBtn = document.getElementById("color-black-btn");
+const colorWhiteBtn = document.getElementById("color-white-btn");
 const botGameEasyBtn = document.getElementById("bot-game-easy-btn");
 const botGameHardBtn = document.getElementById("bot-game-hard-btn");
 const createRoomBtn = document.getElementById("create-room-btn");
@@ -60,6 +62,7 @@ let roomData = null;
 let unsubscribeRoom = null;
 let isBotGame = false;
 let botDifficulty = "hard"; // "easy" | "hard" -- see pickBotMove()
+let humanColor = "host"; // "host" (black, goes first) | "guest" (white) -- picked in the lobby, only used for bot games
 
 function generateRoomCode() {
   let code = "";
@@ -366,19 +369,23 @@ function startBotGame(difficulty) {
   isBotGame = true;
   botDifficulty = difficulty;
   currentRoomCode = null;
-  myRole = "host"; // the human is always black and goes first
+  myRole = humanColor; // "host" (black) or "guest" (white), from the lobby's color picker
   leaveGameBtn.textContent = "나가기";
   resultLeaveBtn.textContent = "나가기";
   const url = new URL(window.location.href);
   url.searchParams.delete("room");
   history.replaceState(null, "", url);
+
+  const humanIsHost = myRole === "host";
+  const humanLabel = currentUser ? currentUser.nickname : "나";
+  const botLabel = difficulty === "easy" ? "🤖 봇 (쉬움)" : "🤖 봇 (어려움)";
   roomData = {
-    hostUid: "local-player",
-    hostNickname: currentUser ? currentUser.nickname : "나",
-    guestUid: "bot",
-    guestNickname: difficulty === "easy" ? "🤖 봇 (쉬움)" : "🤖 봇 (어려움)",
+    hostUid: humanIsHost ? "local-player" : "bot",
+    hostNickname: humanIsHost ? humanLabel : botLabel,
+    guestUid: humanIsHost ? "bot" : "local-player",
+    guestNickname: humanIsHost ? botLabel : humanLabel,
     board: emptyBoard(),
-    turn: "host",
+    turn: "host", // black always goes first, whoever picked black
     status: "playing",
     winner: null,
     winLine: null,
@@ -386,6 +393,9 @@ function startBotGame(difficulty) {
     moveCount: 0,
   };
   renderRoom();
+  // If the human picked white, the bot (black) has to open -- normally
+  // botTakeTurn() only ever runs right after the human's own move.
+  if (!humanIsHost) setTimeout(botTakeTurn, BOT_THINK_DELAY_MS);
 }
 
 // Applies a move straight to the local roomData object and re-renders --
@@ -416,8 +426,15 @@ function applyLocalMove(index, role) {
 // by how strong a line it would extend for either side (open ends count
 // for more than blocked ones, since an open three threatens to become an
 // open four next turn) plus a small centrality nudge for early-game ties.
-const BOT_VALUE = 2;
-const HUMAN_VALUE = 1;
+// The bot isn't always white -- the lobby's color picker lets the human
+// take either side -- so its stone value is derived from myRole (the
+// human's role) rather than hardcoded.
+function botRole() {
+  return myRole === "host" ? "guest" : "host";
+}
+function roleValue(role) {
+  return role === "host" ? 1 : 2;
+}
 
 function patternScore(runLength, openEnds) {
   if (runLength >= 5) return 100000;
@@ -474,20 +491,22 @@ function pickBotMove(board) {
   if (emptyIndices.length === 0) return null;
   if (emptyIndices.length === board.length) return Math.floor(board.length / 2); // empty board -> take the center
 
+  const botValue = roleValue(botRole());
+  const humanValue = roleValue(myRole);
   const isEasy = botDifficulty === "easy";
   const willBlock = isEasy ? Math.random() < BOT_BLOCK_RELIABILITY : true;
   const center = (BOARD_SIZE - 1) / 2;
   const scored = [];
   for (const i of emptyIndices) {
     const winBoard = [...board];
-    winBoard[i] = BOT_VALUE;
-    if (checkWin(winBoard, i, BOT_VALUE)) return i; // take a guaranteed win immediately
+    winBoard[i] = botValue;
+    if (checkWin(winBoard, i, botValue)) return i; // take a guaranteed win immediately
 
     const blockBoard = [...board];
-    blockBoard[i] = HUMAN_VALUE;
-    const mustBlock = !!checkWin(blockBoard, i, HUMAN_VALUE);
+    blockBoard[i] = humanValue;
+    const mustBlock = !!checkWin(blockBoard, i, humanValue);
 
-    let score = lineScoreAt(board, i, BOT_VALUE) + lineScoreAt(board, i, HUMAN_VALUE) * 0.9;
+    let score = lineScoreAt(board, i, botValue) + lineScoreAt(board, i, humanValue) * 0.9;
     if (mustBlock && willBlock) score += 50000;
     const r = Math.floor(i / BOARD_SIZE);
     const c = i % BOARD_SIZE;
@@ -510,10 +529,10 @@ function pickBotMove(board) {
 const BOT_THINK_DELAY_MS = 500;
 
 function botTakeTurn() {
-  if (!isBotGame || !roomData || roomData.status !== "playing" || roomData.turn !== "guest") return;
+  if (!isBotGame || !roomData || roomData.status !== "playing" || roomData.turn !== botRole()) return;
   const move = pickBotMove(roomData.board);
   if (move === null) return;
-  applyLocalMove(move, "guest");
+  applyLocalMove(move, botRole());
 }
 
 // Wrapped in a transaction against the live server doc (not the locally
@@ -612,6 +631,14 @@ function showLobbyError(message) {
   lobbyErrorEl.textContent = message;
   lobbyErrorEl.hidden = false;
 }
+
+function selectHumanColor(color) {
+  humanColor = color;
+  colorBlackBtn.classList.toggle("is-selected", color === "host");
+  colorWhiteBtn.classList.toggle("is-selected", color === "guest");
+}
+colorBlackBtn.addEventListener("click", () => selectHumanColor("host"));
+colorWhiteBtn.addEventListener("click", () => selectHumanColor("guest"));
 
 botGameEasyBtn.addEventListener("click", () => startBotGame("easy"));
 botGameHardBtn.addEventListener("click", () => startBotGame("hard"));
