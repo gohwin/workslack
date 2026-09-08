@@ -313,6 +313,14 @@ button:disabled {
   letter-spacing: 0.08em;
 }
 
+.dealer-avatar {
+  display: inline-block;
+  font-size: 1.5rem;
+  margin-right: 6px;
+  vertical-align: middle;
+  text-transform: none;
+}
+
 .hand-row {
   display: flex;
   justify-content: center;
@@ -362,10 +370,19 @@ button:disabled {
   min-height: 1.4em;
 }
 
+/* Always exactly MAX_PLAYERS (6) slots now (see renderTable()) -- a fixed
+   3-column grid reads as "2 rows of 3 chairs around the table" instead of
+   auto-fit's column count shifting around as the container resizes. */
 .seats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+}
+
+@media (max-width: 460px) {
+  .seats {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .seat {
@@ -384,6 +401,36 @@ button:disabled {
 
 .seat.is-me {
   background: rgba(11, 12, 16, 0.75);
+}
+
+.seat-chair-icon {
+  display: block;
+  text-align: center;
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+}
+
+/* An open chair -- MAX_PLAYERS slots always render (see renderTable()) so
+   the table reads as "6 seats, N taken" instead of just shrinking to fit
+   whoever's actually sat down. Dimmed and dashed so it doesn't compete
+   with the occupied seats around it. */
+.seat.seat-empty {
+  background: rgba(11, 12, 16, 0.25);
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.15);
+  text-align: center;
+  opacity: 0.6;
+}
+
+.seat.seat-empty .seat-chair-icon {
+  font-size: 1.7rem;
+  opacity: 0.5;
+}
+
+.seat-empty-label {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .seat-name-row {

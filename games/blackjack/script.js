@@ -1019,13 +1019,31 @@ function renderTable() {
   };
   roundStatusLabelEl.textContent = statusText[tableData.status] || "";
 
-  // Seats
+  // Seats -- always exactly MAX_PLAYERS chairs (the table's actual physical
+  // capacity), not just however many happen to be seated right now, so an
+  // empty spot reads as "open, come sit down" rather than the table just
+  // looking smaller when it's not full.
   seatsEl.innerHTML = "";
-  for (const uid of tableData.playerOrder) {
-    const p = tableData.players[uid];
-    if (!p) continue;
+  for (let i = 0; i < MAX_PLAYERS; i++) {
+    const uid = tableData.playerOrder[i];
+    const p = uid ? tableData.players[uid] : null;
     const seat = document.createElement("div");
     seat.className = "seat";
+
+    const chairIcon = document.createElement("span");
+    chairIcon.className = "seat-chair-icon";
+    chairIcon.textContent = "🪑";
+    seat.appendChild(chairIcon);
+
+    if (!p) {
+      seat.classList.add("seat-empty");
+      const emptyLabel = document.createElement("p");
+      emptyLabel.className = "seat-empty-label";
+      emptyLabel.textContent = "빈 자리";
+      seat.appendChild(emptyLabel);
+      seatsEl.appendChild(seat);
+      continue;
+    }
     if (uid === tableData.turnUid) seat.classList.add("is-turn");
     if (uid === currentUser.uid) seat.classList.add("is-me");
 
