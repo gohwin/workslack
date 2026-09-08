@@ -355,6 +355,16 @@ button:disabled {
   justify-content: center;
 }
 
+/* Without this, the [hidden] attribute loses to this file's own
+   `.action-controls { display: flex }` above -- same specificity, but an
+   author rule always beats the UA stylesheet's `[hidden] { display: none }`
+   regardless of tie-breaking, so hit/stand/double (and the hand-total
+   label) stayed visible during betting even after actionControlsEl.hidden
+   was set to true. */
+.action-controls[hidden] {
+  display: none;
+}
+
 .my-hand-value-label {
   flex-basis: 100%;
   margin: 0 0 6px;

@@ -606,7 +606,9 @@ function renderTable() {
       else if (p.result === "lose") deltaText = ` (-${p.bet})`;
       else if (p.result === "push") deltaText = " (±0)";
       statusP.textContent = `${RESULT_LABELS[p.result]}${deltaText}`;
-      statusP.classList.add(RESULT_CLASSES[p.result]);
+      // "push" maps to "" (no extra color) -- classList.add() throws on an
+      // empty string, so only add a class when there actually is one.
+      if (RESULT_CLASSES[p.result]) statusP.classList.add(RESULT_CLASSES[p.result]);
     } else if (p.hand.length > 0) {
       statusP.textContent = `${STATUS_LABELS[p.status] || ""} · 합계 ${handValue(p.hand)}${p.bet > 0 ? ` · 베팅 ${p.bet}` : ""}`;
     } else {
