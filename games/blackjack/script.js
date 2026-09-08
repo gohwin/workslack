@@ -161,7 +161,110 @@ function generateTableCode() {
 }
 
 function newSeatedPlayer(nickname) {
-  return { nickname, chips: 0, bet: 0, hand: [], status: "seated", result: null };
+  return { nickname, chips: 0, bet: 0, hand: [], status: "seated", result: null, lastSeenAt: Date.now() };
+}
+
+// There's no true presence detection here (Firestore, unlike Realtime
+// Database, has no onDisconnect()), so a closed tab / back button never
+// runs any cleanup code at all -- only an explicit "나가기" click does (see
+// leaveTable()). Heartbeat + a staleness threshold approximates presence
+// instead: every seated client pings its own lastSeenAt periodically, and
+// anyone who hasn't in a while gets treated as gone -- both for the
+// lobby's occupancy display (see effectiveOccupancy()) and for actually
+// reclaiming their seat the next time someone tries to join (see
+// pruneStaleSeats()). The threshold is well past the heartbeat interval to
+// tolerate a backgrounded tab's throttled timers, not just network hiccups.
+const HEARTBEAT_INTERVAL_MS = 20 * 1000;
+const STALE_MS = 3 * 60 * 1000;
+let heartbeatTimer = null;
+
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatTimer = setInterval(() => {
+    // Guard against the doc no longer having this seat (e.g. someone else's
+    // join just pruned us as stale) -- an updateDoc on a missing nested
+    // field path would otherwise silently resurrect a bare, broken seat
+    // entry. tableData is this client's own live snapshot, kept in sync by
+    // its onSnapshot listener, so it reflects a prune done by anyone.
+    if (!currentTableCode || !currentUser || !tableData || !tableData.players[currentUser.uid]) return;
+    ensureFirestore().then((fsHandle) => {
+      if (!fsHandle) return;
+      const { db, api } = fsHandle;
+      api
+        .updateDoc(api.doc(db, "blackjack-tables", currentTableCode), {
+          [`players.${currentUser.uid}.lastSeenAt`]: Date.now(),
+        })
+        .catch((err) => console.error(err));
+    });
+  }, HEARTBEAT_INTERVAL_MS);
+}
+
+function stopHeartbeat() {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+}
+
+// Shared "remove this one seat" logic -- an explicit leaveTable() and a
+// stale-seat prune both need the exact same host/turn handoff, so this is
+// the one place that decides what removing `uid` from `data` looks like.
+// Returns either { full: <entire fresh doc> } (last player left -- reset
+// for reuse) or { patch: <partial update> }.
+function buildRemovePlayerUpdate(data, uid) {
+  const newOrder = data.playerOrder.filter((u) => u !== uid);
+  if (newOrder.length === 0) {
+    return {
+      full: {
+        hostUid: null,
+        status: "waiting",
+        playerOrder: [],
+        players: {},
+        deck: [],
+        dealerHand: [],
+        dealerRevealed: false,
+        turnUid: null,
+        createdAt: data.createdAt,
+        updatedAt: Date.now(),
+      },
+    };
+  }
+  const newPlayers = { ...data.players };
+  delete newPlayers[uid];
+  const patch = { playerOrder: newOrder, players: newPlayers, updatedAt: Date.now() };
+  if (data.hostUid === uid) patch.hostUid = newOrder[0];
+  if (data.turnUid === uid) {
+    // They were mid-turn -- hand it off the same way standing would
+    // (findNextTurnUid skips uid itself and only looks at players still
+    // "playing", so it's safe to call against the pre-removal `data` here).
+    const next = findNextTurnUid(data, uid);
+    patch.turnUid = next;
+    if (!next && data.status === "playing") patch.status = "dealerTurn";
+  }
+  return { patch };
+}
+
+// Applies buildRemovePlayerUpdate() for every seat that's gone stale
+// (except the caller's own uid -- you're clearly present if you're the one
+// running this), folding each removal into a plain in-memory doc so a join
+// transaction can prune and then seat the new player in one write.
+function pruneStaleSeats(data, exceptUid) {
+  const now = Date.now();
+  let cur = data;
+  for (const uid of [...cur.playerOrder]) {
+    if (uid === exceptUid) continue;
+    const seenAt = (cur.players[uid] && cur.players[uid].lastSeenAt) || 0;
+    if (now - seenAt <= STALE_MS) continue;
+    const removed = buildRemovePlayerUpdate(cur, uid);
+    cur = removed.full || { ...cur, ...removed.patch };
+  }
+  return cur;
+}
+
+function effectiveOccupancy(data) {
+  if (!data) return 0;
+  const now = Date.now();
+  return data.playerOrder.filter((uid) => now - ((data.players[uid] && data.players[uid].lastSeenAt) || 0) <= STALE_MS).length;
 }
 
 async function createTable() {
@@ -224,8 +327,15 @@ async function joinTable(rawCode) {
         joinError = "존재하지 않는 테이블 코드입니다.";
         return;
       }
-      const data = snap.data();
-      if (data.players[currentUser.uid]) return; // already seated -- just rejoin
+      // Reclaim any seat nobody's actually behind anymore (closed tab, back
+      // button -- neither ever runs leaveTable()) before deciding whether
+      // there's room, so a table doesn't look permanently full just
+      // because someone wandered off without clicking "나가기".
+      const data = pruneStaleSeats(snap.data(), currentUser.uid);
+      if (data.players[currentUser.uid]) {
+        tx.set(ref, data); // already seated -- just rejoin, but still write back any pruning above
+        return;
+      }
       if (data.status !== "waiting") {
         joinError = "이미 게임이 진행 중인 테이블입니다.";
         return;
@@ -234,9 +344,18 @@ async function joinTable(rawCode) {
         joinError = `테이블이 꽉 찼습니다 (최대 ${MAX_PLAYERS}명).`;
         return;
       }
-      tx.update(ref, {
+      tx.set(ref, {
+        ...data,
+        // data.hostUid can be null here -- pruning (or a prior explicit
+        // leaveTable()) can empty a table down to 0 players without
+        // deleting its doc, and that reset always clears hostUid. Joining
+        // one of those needs to claim the host role same as if the doc
+        // never existed at all, or it'd stay hostless forever (nobody's
+        // client ever passes the `currentUser.uid === tableData.hostUid`
+        // check, so dealing/dealer-resolving would never fire for anyone).
+        hostUid: data.hostUid || currentUser.uid,
         playerOrder: [...data.playerOrder, currentUser.uid],
-        [`players.${currentUser.uid}`]: newSeatedPlayer(currentUser.nickname),
+        players: { ...data.players, [currentUser.uid]: newSeatedPlayer(currentUser.nickname) },
         updatedAt: Date.now(),
       });
     });
@@ -286,8 +405,12 @@ function renderPublicTables() {
   publicTableListEl.innerHTML = "";
   PUBLIC_TABLE_IDS.forEach((id, i) => {
     const data = publicTablesData[id];
-    const count = data ? data.playerOrder.length : 0;
-    const statusLabel = !data ? "비어있음" : data.status === "waiting" ? "대기 중" : "게임 중";
+    // Read-side only (no write) -- doesn't reclaim the seat by itself, just
+    // stops the lobby list from showing someone who's clearly gone as
+    // still occupying a spot. The actual reclaiming happens transactionally
+    // the next time someone tries to join (see pruneStaleSeats() callers).
+    const count = data ? effectiveOccupancy(data) : 0;
+    const statusLabel = !data || count === 0 ? "비어있음" : data.status === "waiting" ? "대기 중" : "게임 중";
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "public-table-row";
@@ -338,8 +461,11 @@ async function enterPublicTable(tableId) {
         });
         return;
       }
-      const data = snap.data();
-      if (data.players[currentUser.uid]) return; // already seated -- just rejoin
+      const data = pruneStaleSeats(snap.data(), currentUser.uid);
+      if (data.players[currentUser.uid]) {
+        tx.set(ref, data); // already seated -- just rejoin, but still write back any pruning above
+        return;
+      }
       if (data.status !== "waiting") {
         joinError = "이미 게임이 진행 중인 테이블입니다.";
         return;
@@ -348,9 +474,18 @@ async function enterPublicTable(tableId) {
         joinError = `테이블이 꽉 찼습니다 (최대 ${MAX_PLAYERS}명).`;
         return;
       }
-      tx.update(ref, {
+      tx.set(ref, {
+        ...data,
+        // data.hostUid can be null here -- pruning (or a prior explicit
+        // leaveTable()) can empty a table down to 0 players without
+        // deleting its doc, and that reset always clears hostUid. Joining
+        // one of those needs to claim the host role same as if the doc
+        // never existed at all, or it'd stay hostless forever (nobody's
+        // client ever passes the `currentUser.uid === tableData.hostUid`
+        // check, so dealing/dealer-resolving would never fire for anyone).
+        hostUid: data.hostUid || currentUser.uid,
         playerOrder: [...data.playerOrder, currentUser.uid],
-        [`players.${currentUser.uid}`]: newSeatedPlayer(currentUser.nickname),
+        players: { ...data.players, [currentUser.uid]: newSeatedPlayer(currentUser.nickname) },
         updatedAt: Date.now(),
       });
     });
@@ -385,6 +520,7 @@ function enterTable(code) {
   url.searchParams.set("table", code);
   history.replaceState(null, "", url);
   subscribeTable(code);
+  startHeartbeat();
 }
 
 async function subscribeTable(code) {
@@ -427,6 +563,7 @@ async function leaveTable() {
   const codeLeaving = currentTableCode;
   const uidLeaving = currentUser ? currentUser.uid : null;
 
+  stopHeartbeat();
   if (unsubscribeTable) {
     unsubscribeTable();
     unsubscribeTable = null;
@@ -450,40 +587,9 @@ async function leaveTable() {
       if (!snap.exists()) return;
       const data = snap.data();
       if (!data.players[uidLeaving]) return;
-
-      const newOrder = data.playerOrder.filter((u) => u !== uidLeaving);
-      if (newOrder.length === 0) {
-        // Nobody left -- reset to a clean reusable slot instead of leaving
-        // a stale deck/dealer hand around for whoever sits down next.
-        tx.set(ref, {
-          hostUid: null,
-          status: "waiting",
-          playerOrder: [],
-          players: {},
-          deck: [],
-          dealerHand: [],
-          dealerRevealed: false,
-          turnUid: null,
-          createdAt: data.createdAt,
-          updatedAt: Date.now(),
-        });
-        return;
-      }
-
-      const newPlayers = { ...data.players };
-      delete newPlayers[uidLeaving];
-      const update = { playerOrder: newOrder, players: newPlayers, updatedAt: Date.now() };
-      if (data.hostUid === uidLeaving) update.hostUid = newOrder[0];
-      if (data.turnUid === uidLeaving) {
-        // They were mid-turn -- hand it off the same way standing would
-        // (findNextTurnUid already skips uidLeaving itself and only looks
-        // at players still "playing", so it's safe to call against the
-        // pre-removal `data` here).
-        const next = findNextTurnUid(data, uidLeaving);
-        update.turnUid = next;
-        if (!next && data.status === "playing") update.status = "dealerTurn";
-      }
-      tx.update(ref, update);
+      const removed = buildRemovePlayerUpdate(data, uidLeaving);
+      if (removed.full) tx.set(ref, removed.full);
+      else tx.update(ref, removed.patch);
     });
   } catch (err) {
     console.error(err);
