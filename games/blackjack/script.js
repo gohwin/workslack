@@ -320,7 +320,11 @@ async function startRound() {
   for (const uid of tableData.playerOrder) {
     update[`players.${uid}.bet`] = 0;
     update[`players.${uid}.hand`] = [];
-    update[`players.${uid}.status`] = "betting";
+    // A player with 0 chips can't bet anything anyway -- skip straight to
+    // sitting-out instead of putting them through the betting screen just
+    // to watch their bet clamp to 0. They still see the table and can buy
+    // in (환전) for the next round.
+    update[`players.${uid}.status`] = tableData.players[uid].chips > 0 ? "betting" : "sitting-out";
     update[`players.${uid}.result`] = null;
   }
   await api.updateDoc(ref, update);
