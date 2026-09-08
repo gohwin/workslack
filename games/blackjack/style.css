@@ -1,0 +1,317 @@
+body {
+  margin: 0;
+  /* No top padding -- the shared sticky nav bar (site-header.css) already
+     has its own margin-bottom for spacing before this page's content. Top
+     padding here pushed the whole nav bar down by that amount (it's the
+     first element in body), making this page's header sit visibly lower
+     than the no-padding main page's. */
+  padding: 0 16px 48px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  text-align: center;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 10px 16px;
+}
+
+button:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-hover);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Shared "centered message" screens (login-required / lobby) -- same
+   pattern as games/omok/style.css. */
+
+.notice-screen,
+.lobby-screen {
+  max-width: 420px;
+  margin: 48px auto 0;
+  padding: 0 8px;
+}
+
+.notice-title,
+.lobby-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin: 0 0 10px;
+}
+
+.notice-sub,
+.lobby-sub {
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 0 24px;
+}
+
+.lobby-actions {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.lobby-primary-btn {
+  width: 100%;
+  padding: 14px 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--accent-text);
+}
+
+.lobby-primary-btn:hover {
+  filter: brightness(1.08);
+}
+
+.lobby-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin: 18px 0;
+}
+
+.lobby-divider::before,
+.lobby-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.join-row {
+  display: flex;
+  gap: 8px;
+}
+
+.join-code-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.join-code-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.lobby-error {
+  color: #f87171;
+  font-size: 0.85rem;
+  margin: 14px 0 0;
+}
+
+.leave-btn {
+  color: var(--text-dim);
+}
+
+/* Table screen */
+
+.table-screen {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.table-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.table-code-label {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+
+.table-top-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.dealer-area {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.dealer-label {
+  margin: 0 0 8px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.hand-row {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  min-height: 76px;
+  flex-wrap: wrap;
+}
+
+.playing-card {
+  width: 50px;
+  height: 70px;
+  border-radius: 6px;
+  background: #f5f5f0;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.playing-card.red {
+  color: #c0392b;
+}
+
+.playing-card.back {
+  background: repeating-linear-gradient(135deg, var(--accent), var(--accent) 6px, var(--accent-2) 6px, var(--accent-2) 12px);
+  color: transparent;
+}
+
+.hand-value {
+  margin: 8px 0 0;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.round-status-label {
+  font-weight: 700;
+  margin: 0 0 14px;
+  color: var(--accent-2);
+  min-height: 1.4em;
+}
+
+.seats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.seat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.seat.is-turn {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 1px var(--accent-2);
+}
+
+.seat.is-me {
+  background: var(--surface-hover);
+}
+
+.seat-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.seat-chips {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.seat .hand-row {
+  min-height: 56px;
+  gap: 4px;
+}
+
+.seat .playing-card {
+  width: 38px;
+  height: 54px;
+  font-size: 0.85rem;
+}
+
+.seat-status {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.seat-status.outcome-win {
+  color: #4ade80;
+}
+
+.seat-status.outcome-lose {
+  color: #f87171;
+}
+
+.seat-status.outcome-blackjack {
+  color: #fbbf24;
+}
+
+.host-controls,
+.my-controls {
+  margin: 0 0 16px;
+}
+
+.my-controls-label {
+  margin: 0 0 8px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.bet-preset-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.bet-preset-btn {
+  padding: 8px 12px;
+}
+
+.action-controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.action-controls button {
+  flex: 1;
+  max-width: 140px;
+}

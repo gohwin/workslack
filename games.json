@@ -47,5 +47,12 @@
     "description": "방을 만들어 친구를 초대하는 1대1 실시간 오목 (로그인 필요)",
     "path": "games/omok/index.html",
     "thumbnail": "games/omok/thumbnail.svg"
+  },
+  {
+    "id": "blackjack",
+    "title": "블랙잭",
+    "description": "최대 6명이 테이블에 모여 딜러와 겨루는 블랙잭 (로그인 필요)",
+    "path": "games/blackjack/index.html",
+    "thumbnail": "games/blackjack/thumbnail.svg"
   }
 ]

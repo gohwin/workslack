@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    // 주소가 끝에 "/" 없이 폴더 경로로 열리면(예: /games/blackjack) style.css, script.js 같은
+    // 상대경로가 상위 폴더 기준으로 깨진다. <base> 태그로는 브라우저 프리로드 스캐너가
+    // 아직 고쳐지지 않은 원래 경로로 CSS를 먼저 요청해버려 소용없으므로, 태그 자체를
+    // 정적으로 두지 않고 경로를 계산해 직접 써넣는다.
+    window.__gameBase = (function () {
+      var path = location.pathname;
+      if (/\/$/.test(path)) return path;
+      var lastSlash = path.lastIndexOf("/");
+      var lastSegment = path.slice(lastSlash + 1);
+      return lastSegment.indexOf(".") !== -1 ? path.slice(0, lastSlash + 1) : path + "/";
+    })();
+    // 로그인/계정은 사이트 전체 공용이라 games/<id>/ 두 단계 위 사이트 루트에 있는
+    // firebase-config.js, auth.js를 그대로 가져다 쓴다. 여러 명이 같은 테이블에 앉는
+    // 게임이라 오목처럼 로그인이 필수다 -- 새로고침해도 "이 자리가 누구였는지" 알아야 함.
+    window.__siteBase = window.__gameBase.replace(/games\/[^/]+\/$/, "");
+    // site-header.js writes this into the nav bar's back link + title
+    // instead of the page repeating them as its own back-link/<h1>.
+    window.__gameTitle = "블랙잭";
+    document.write('<link rel="stylesheet" href="' + window.__siteBase + 'theme.css">');
+    document.write('<link rel="stylesheet" href="' + window.__siteBase + 'site-header.css">');
+    document.write('<link rel="stylesheet" href="' + window.__gameBase + 'style.css">');
+  </script>
+  <title>블랙잭 - 미니게임 모음</title>
+</head>
+<body>
+  <script>
+    document.write('<script src="' + window.__siteBase + 'site-header.js"><\/script>');
+  </script>
+
+  <div id="login-required" class="notice-screen" hidden>
+    <p class="notice-title">🔒 로그인이 필요해요</p>
+    <p class="notice-sub">여러 명이 같은 테이블에 앉는 게임이라 계정이 필요합니다.<br />위 헤더에서 로그인하거나 회원가입 후 다시 시도해주세요.</p>
+  </div>
+
+  <div id="lobby-screen" class="lobby-screen" hidden>
+    <p class="lobby-title">🂡 블랙잭</p>
+    <p class="lobby-sub">테이블을 만들어서 코드나 링크를 친구에게 보내주세요. 혼자서 딜러랑 붙어도 됩니다.</p>
+
+    <div class="lobby-actions">
+      <button id="create-table-btn" class="lobby-primary-btn">새 테이블 만들기</button>
+
+      <div class="lobby-divider"><span>또는</span></div>
+
+      <div class="join-row">
+        <input id="join-code-input" class="join-code-input" type="text" placeholder="테이블 코드 입력" maxlength="6" autocomplete="off" />
+        <button id="join-table-btn">참가하기</button>
+      </div>
+    </div>
+
+    <p id="lobby-error" class="lobby-error" hidden></p>
+  </div>
+
+  <div id="table-screen" class="table-screen" hidden>
+    <div class="table-top-bar">
+      <p id="table-code-label" class="table-code-label"></p>
+      <div class="table-top-actions">
+        <button id="copy-link-btn">링크 복사</button>
+        <button id="leave-table-btn" class="leave-btn">나가기</button>
+      </div>
+    </div>
+
+    <div class="dealer-area">
+      <p class="dealer-label">딜러</p>
+      <div id="dealer-hand" class="hand-row"></div>
+      <p id="dealer-value" class="hand-value"></p>
+    </div>
+
+    <p id="round-status-label" class="round-status-label"></p>
+
+    <div id="seats" class="seats"></div>
+
+    <div id="host-controls" class="host-controls" hidden>
+      <button id="start-round-btn">게임 시작</button>
+      <button id="next-round-btn" hidden>다음 판</button>
+    </div>
+
+    <div id="my-controls" class="my-controls" hidden>
+      <div id="bet-controls" class="bet-controls" hidden>
+        <p class="my-controls-label">베팅액: <span id="bet-amount-label">100</span></p>
+        <div class="bet-preset-row">
+          <button class="bet-preset-btn" data-amount="10">+10</button>
+          <button class="bet-preset-btn" data-amount="50">+50</button>
+          <button class="bet-preset-btn" data-amount="100">+100</button>
+          <button id="bet-reset-btn">초기화</button>
+          <button id="bet-allin-btn">올인</button>
+        </div>
+        <button id="confirm-bet-btn" class="lobby-primary-btn">베팅 확정</button>
+      </div>
+      <div id="action-controls" class="action-controls" hidden>
+        <button id="hit-btn">히트</button>
+        <button id="stand-btn">스탠드</button>
+        <button id="double-btn">더블다운</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.write('<script src="' + window.__siteBase + 'firebase-config.js"><\/script>');
+  </script>
+  <script>
+    document.write('<script src="' + window.__siteBase + 'auth.js"><\/script>');
+  </script>
+  <script>
+    document.write('<script src="' + window.__gameBase + 'script.js"><\/script>');
+  </script>
+</body>
+</html>
