@@ -401,13 +401,30 @@ async function buyChips(amount) {
   }
 }
 
+// A confirmed bet doesn't actually leave the chips field -- it's only
+// applied as a net delta once resolveDealerTurn() settles the round (see
+// that function). That means "not mid-turn" isn't a strong enough guard
+// on its own: hit/stand/double all hand the turn to the next player (or
+// straight to dealerTurn if you're last), so the instant *that* happens
+// you're no longer "mid-turn" even though your bet is still live -- cash
+// out right then and the eventual loss lands on a chip balance you've
+// already emptied, for free (a win still pays out on top of it). Blocking
+// on "I have an unresolved bet this round" instead of "it's my turn right
+// now" closes that -- bet is reset to 0 by startRound() and only nonzero
+// again once resolveDealerTurn() has already priced it into chips, aside
+// from the live betting/playing/dealerTurn window itself.
+function hasUnresolvedBet(data, me) {
+  return me.bet > 0 && data.status !== "waiting" && data.status !== "roundOver";
+}
+
 // The other half of the buy-in/cash-out pair -- converts chips back to
-// real score, same cross-document transaction for the same reason. Only
-// allowed outside of an active hand (not mid-turn) so a player can't cash
-// out to dodge a bet they've already committed to.
+// real score, same cross-document transaction for the same reason. Blocked
+// while this round's bet hasn't been settled yet so a player can't dodge a
+// loss they've already committed to (see hasUnresolvedBet() above).
 async function cashOutChips() {
   if (!tableData || !currentUser || !currentTableCode) return;
-  if (tableData.status === "playing" && tableData.turnUid === currentUser.uid) return;
+  const me = tableData.players[currentUser.uid];
+  if (me && hasUnresolvedBet(tableData, me)) return;
   const fsHandle = await ensureFirestore();
   if (!fsHandle) return;
   const { db, api } = fsHandle;
@@ -674,9 +691,8 @@ function renderTable() {
   // Score <-> chip exchange
   myScoreLabelEl.textContent = currentUser.totalScore;
   myChipsLabelEl.textContent = me ? me.chips : 0;
-  const myTurnActive = tableData.status === "playing" && tableData.turnUid === currentUser.uid;
   buyChipsBtn.disabled = currentUser.totalScore <= 0;
-  cashOutBtn.disabled = !me || me.chips <= 0 || myTurnActive;
+  cashOutBtn.disabled = !me || me.chips <= 0 || hasUnresolvedBet(tableData, me);
 
   // Dealer
   dealerHandEl.innerHTML = "";
