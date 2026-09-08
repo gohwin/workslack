@@ -131,8 +131,38 @@ button:disabled {
 /* Table screen */
 
 .table-screen {
-  max-width: 720px;
+  max-width: 1120px;
   margin: 0 auto;
+}
+
+/* Exchange (left) / felt table (center) / bet amount (right) side by side
+   on wide viewports; stacked in DOM order (exchange, table, bet) on narrow
+   ones, same order the single centered column used before this was split
+   into a 3-way layout. */
+.table-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.table-center {
+  min-width: 0;
+}
+
+@media (min-width: 980px) {
+  .table-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .exchange-controls,
+  .bet-controls {
+    width: 220px;
+    flex-shrink: 0;
+  }
+  .table-center {
+    flex: 1;
+  }
 }
 
 .table-top-bar {
@@ -158,14 +188,14 @@ button:disabled {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 10px 14px;
-  margin-bottom: 14px;
+  padding: 14px;
 }
 
 .exchange-info {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   font-size: 0.9rem;
   color: var(--text-muted);
+  line-height: 1.6;
 }
 
 .exchange-info strong {
@@ -173,8 +203,11 @@ button:disabled {
   font-weight: 800;
 }
 
+/* A narrow sidebar column, not the old full-width bar -- stack the input
+   and both buttons instead of trying to fit them in one row. */
 .exchange-actions {
   display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
@@ -365,9 +398,22 @@ button:disabled {
   color: #fbbf24;
 }
 
-.host-controls,
-.my-controls {
+.host-controls {
   margin: 0 0 16px;
+}
+
+.bet-controls {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+/* Same recurring bug as action-controls below: an author `display` rule
+   always beats the UA [hidden]{display:none}, regardless of specificity
+   tie-breaking, so this needs its own explicit override. */
+.bet-controls[hidden] {
+  display: none;
 }
 
 .my-controls-label {

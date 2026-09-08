@@ -65,49 +65,63 @@
       </div>
     </div>
 
-    <div id="exchange-controls" class="exchange-controls">
-      <p class="exchange-info">내 점수 <strong id="my-score-label">0</strong>점 · 칩 <strong id="my-chips-label">0</strong></p>
-      <div class="exchange-actions">
-        <input id="exchange-amount-input" class="exchange-amount-input" type="number" min="1" step="1" placeholder="교환할 점수" />
-        <button id="buy-chips-btn">칩으로 교환</button>
-        <button id="cash-out-btn">현금화</button>
-      </div>
-    </div>
-
-    <div class="felt-table">
-      <div class="dealer-area">
-        <p class="dealer-label">딜러</p>
-        <div id="dealer-hand" class="hand-row"></div>
-        <p id="dealer-value" class="hand-value"></p>
+    <div class="table-layout">
+      <div id="exchange-controls" class="exchange-controls">
+        <p class="exchange-info">내 점수 <strong id="my-score-label">0</strong>점<br />칩 <strong id="my-chips-label">0</strong></p>
+        <div class="exchange-actions">
+          <input id="exchange-amount-input" class="exchange-amount-input" type="number" min="1" step="1" placeholder="교환할 점수" />
+          <button id="buy-chips-btn">칩으로 교환</button>
+          <button id="cash-out-btn">현금화</button>
+        </div>
       </div>
 
-      <p id="round-status-label" class="round-status-label"></p>
+      <div class="table-center">
+        <div class="felt-table">
+          <div class="dealer-area">
+            <p class="dealer-label">딜러</p>
+            <div id="dealer-hand" class="hand-row"></div>
+            <p id="dealer-value" class="hand-value"></p>
+          </div>
 
-      <div id="seats" class="seats"></div>
-    </div>
+          <p id="round-status-label" class="round-status-label"></p>
 
-    <div id="host-controls" class="host-controls" hidden>
-      <button id="start-round-btn">게임 시작</button>
-      <button id="next-round-btn" hidden>다음 판</button>
-    </div>
+          <div id="seats" class="seats"></div>
+        </div>
 
-    <div id="my-controls" class="my-controls" hidden>
+        <div id="host-controls" class="host-controls" hidden>
+          <button id="start-round-btn">게임 시작</button>
+          <button id="next-round-btn" hidden>다음 판</button>
+        </div>
+
+        <div id="action-controls" class="action-controls" hidden>
+          <p id="my-hand-value-label" class="my-hand-value-label"></p>
+          <button id="hit-btn">히트</button>
+          <button id="stand-btn">스탠드</button>
+          <button id="double-btn">더블다운</button>
+        </div>
+      </div>
+
       <div id="bet-controls" class="bet-controls" hidden>
         <p class="my-controls-label">베팅액: <span id="bet-amount-label">100</span></p>
         <div class="bet-preset-row">
           <button class="bet-preset-btn" data-amount="10">+10</button>
           <button class="bet-preset-btn" data-amount="50">+50</button>
           <button class="bet-preset-btn" data-amount="100">+100</button>
+          <button class="bet-preset-btn" data-amount="500">+500</button>
+          <button class="bet-preset-btn" data-amount="1000">+1000</button>
+        </div>
+        <div class="bet-preset-row">
+          <button class="bet-preset-btn" data-amount="-10">-10</button>
+          <button class="bet-preset-btn" data-amount="-50">-50</button>
+          <button class="bet-preset-btn" data-amount="-100">-100</button>
+          <button class="bet-preset-btn" data-amount="-500">-500</button>
+          <button class="bet-preset-btn" data-amount="-1000">-1000</button>
+        </div>
+        <div class="bet-preset-row">
           <button id="bet-reset-btn">초기화</button>
           <button id="bet-allin-btn">올인</button>
         </div>
         <button id="confirm-bet-btn" class="lobby-primary-btn">베팅 확정</button>
-      </div>
-      <div id="action-controls" class="action-controls" hidden>
-        <p id="my-hand-value-label" class="my-hand-value-label"></p>
-        <button id="hit-btn">히트</button>
-        <button id="stand-btn">스탠드</button>
-        <button id="double-btn">더블다운</button>
       </div>
     </div>
   </div>

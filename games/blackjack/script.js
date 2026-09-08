@@ -112,7 +112,6 @@ const hostControlsEl = document.getElementById("host-controls");
 const startRoundBtn = document.getElementById("start-round-btn");
 const nextRoundBtn = document.getElementById("next-round-btn");
 
-const myControlsEl = document.getElementById("my-controls");
 const betControlsEl = document.getElementById("bet-controls");
 const betAmountLabelEl = document.getElementById("bet-amount-label");
 const betResetBtn = document.getElementById("bet-reset-btn");
@@ -774,7 +773,6 @@ function renderTable() {
   // My controls
   const iAmBetting = tableData.status === "betting" && me && me.status === "betting";
   const iAmActing = tableData.status === "playing" && tableData.turnUid === currentUser.uid;
-  myControlsEl.hidden = !iAmBetting && !iAmActing;
   betControlsEl.hidden = !iAmBetting;
   actionControlsEl.hidden = !iAmActing;
 
@@ -809,7 +807,9 @@ document.querySelectorAll(".bet-preset-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     if (!tableData || !currentUser) return;
     const me = tableData.players[currentUser.uid];
-    pendingBetAmount = Math.min((me ? me.chips : 0), pendingBetAmount + Number(btn.dataset.amount));
+    // data-amount can be negative (the -10/-50/... row), so clamp on both
+    // ends -- not just up to what's in the wallet, but down to 0 too.
+    pendingBetAmount = Math.max(0, Math.min((me ? me.chips : 0), pendingBetAmount + Number(btn.dataset.amount)));
     betAmountLabelEl.textContent = pendingBetAmount;
   });
 });
