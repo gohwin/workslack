@@ -40,10 +40,17 @@
 
   <div id="lobby-screen" class="lobby-screen" hidden>
     <p class="lobby-title">🂡 블랙잭</p>
-    <p class="lobby-sub">테이블을 만들어서 코드나 링크를 친구에게 보내주세요. 혼자서 딜러랑 붙어도 됩니다.</p>
+    <p class="lobby-sub">공개 테이블에 바로 들어가거나, 친구와 둘만 즐기고 싶으면 비공개 테이블을 만드세요.</p>
+
+    <div class="public-tables">
+      <p class="public-tables-title">공개 테이블</p>
+      <div id="public-table-list" class="public-table-list"></div>
+    </div>
+
+    <div class="lobby-divider"><span>또는</span></div>
 
     <div class="lobby-actions">
-      <button id="create-table-btn" class="lobby-primary-btn">새 테이블 만들기</button>
+      <button id="create-table-btn" class="lobby-primary-btn">새 비공개 테이블 만들기</button>
 
       <div class="lobby-divider"><span>또는</span></div>
 

@@ -30,6 +30,15 @@ const MAX_PLAYERS = 6;
 const TABLE_CODE_LENGTH = 6;
 const TABLE_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
 
+// A handful of always-there tables so people can just click in instead of
+// generating a fresh code every time -- the lobby lists these with live
+// occupancy, and the first person to ever click one lazily creates its doc
+// (see enterPublicTable()), so from the player's side it just looks like
+// the room was already open. Lowercase-with-a-hyphen IDs never collide with
+// generateTableCode()'s private-code alphabet (uppercase letters + digits
+// only), so no uniqueness check is needed against those.
+const PUBLIC_TABLE_IDS = ["public-1", "public-2", "public-3"];
+
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 const SUITS = ["♠", "♥", "♦", "♣"];
 
@@ -88,6 +97,7 @@ const loginRequiredEl = document.getElementById("login-required");
 const lobbyScreenEl = document.getElementById("lobby-screen");
 const tableScreenEl = document.getElementById("table-screen");
 
+const publicTableListEl = document.getElementById("public-table-list");
 const createTableBtn = document.getElementById("create-table-btn");
 const joinCodeInputEl = document.getElementById("join-code-input");
 const joinTableBtn = document.getElementById("join-table-btn");
@@ -138,6 +148,9 @@ let unsubscribeTable = null;
 let pendingBetAmount = 0;
 let dealerResolving = false; // local re-entrancy guard, see resolveDealerTurn()
 let dealing = false; // local re-entrancy guard, see maybeDeal()
+
+let publicTablesData = {}; // tableId -> doc data | undefined (never created yet)
+let publicTableUnsubs = [];
 
 function generateTableCode() {
   let code = "";
@@ -242,8 +255,132 @@ async function joinTable(rawCode) {
   joinTableBtn.disabled = false;
 }
 
+// Live occupancy for the lobby's public-table list. Only runs while the
+// lobby is actually shown (see enterLobby()/unsubscribePublicTables()) --
+// no point paying for 3 listeners while the player is off sitting at a
+// table already.
+async function subscribePublicTables() {
+  unsubscribePublicTables();
+  const fsHandle = await ensureFirestore();
+  if (!fsHandle) return;
+  const { db, api } = fsHandle;
+  publicTableUnsubs = PUBLIC_TABLE_IDS.map((id) =>
+    api.onSnapshot(
+      api.doc(db, "blackjack-tables", id),
+      (snap) => {
+        publicTablesData[id] = snap.exists() ? snap.data() : undefined;
+        renderPublicTables();
+      },
+      (err) => console.error(err)
+    )
+  );
+}
+
+function unsubscribePublicTables() {
+  publicTableUnsubs.forEach((unsub) => unsub());
+  publicTableUnsubs = [];
+}
+
+function renderPublicTables() {
+  if (!publicTableListEl) return;
+  publicTableListEl.innerHTML = "";
+  PUBLIC_TABLE_IDS.forEach((id, i) => {
+    const data = publicTablesData[id];
+    const count = data ? data.playerOrder.length : 0;
+    const statusLabel = !data ? "비어있음" : data.status === "waiting" ? "대기 중" : "게임 중";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "public-table-row";
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "public-table-name";
+    nameSpan.textContent = `테이블 ${i + 1}`;
+    const metaSpan = document.createElement("span");
+    metaSpan.className = "public-table-meta";
+    metaSpan.textContent = `${count}/${MAX_PLAYERS}명 · ${statusLabel}`;
+    btn.appendChild(nameSpan);
+    btn.appendChild(metaSpan);
+    btn.addEventListener("click", () => enterPublicTable(id));
+    publicTableListEl.appendChild(btn);
+  });
+}
+
+// Combines createTable()'s "make a fresh doc" and joinTable()'s "add me to
+// an existing one" into a single transaction keyed on a fixed public ID --
+// whichever of those applies depends on whether anyone's ever sat at this
+// slot before, and doing both branches in one transaction (instead of a
+// getDoc-then-decide like the private-table flow) avoids two players
+// racing to be "first" at an empty public table and both trying to create
+// the doc.
+async function enterPublicTable(tableId) {
+  if (!currentUser) return;
+  lobbyErrorEl.hidden = true;
+  try {
+    const fsHandle = await ensureFirestore();
+    if (!fsHandle) throw new Error("Firebase not configured");
+    const { db, api } = fsHandle;
+    const ref = api.doc(db, "blackjack-tables", tableId);
+
+    let joinError = null;
+    await api.runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) {
+        tx.set(ref, {
+          hostUid: currentUser.uid,
+          status: "waiting",
+          playerOrder: [currentUser.uid],
+          players: { [currentUser.uid]: newSeatedPlayer(currentUser.nickname) },
+          deck: [],
+          dealerHand: [],
+          dealerRevealed: false,
+          turnUid: null,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+        return;
+      }
+      const data = snap.data();
+      if (data.players[currentUser.uid]) return; // already seated -- just rejoin
+      if (data.status !== "waiting") {
+        joinError = "이미 게임이 진행 중인 테이블입니다.";
+        return;
+      }
+      if (data.playerOrder.length >= MAX_PLAYERS) {
+        joinError = `테이블이 꽉 찼습니다 (최대 ${MAX_PLAYERS}명).`;
+        return;
+      }
+      tx.update(ref, {
+        playerOrder: [...data.playerOrder, currentUser.uid],
+        [`players.${currentUser.uid}`]: newSeatedPlayer(currentUser.nickname),
+        updatedAt: Date.now(),
+      });
+    });
+
+    if (joinError) {
+      lobbyErrorEl.textContent = joinError;
+      lobbyErrorEl.hidden = false;
+      return;
+    }
+    enterTable(tableId);
+  } catch (err) {
+    console.error(err);
+    lobbyErrorEl.textContent = "테이블 입장 중 문제가 발생했습니다.";
+    lobbyErrorEl.hidden = false;
+  }
+}
+
+function enterLobby() {
+  showScreen("lobby");
+  subscribePublicTables();
+}
+
+function tableDisplayName(code) {
+  const idx = PUBLIC_TABLE_IDS.indexOf(code);
+  return idx === -1 ? null : `공개 테이블 ${idx + 1}`;
+}
+
 function enterTable(code) {
   currentTableCode = code;
+  unsubscribePublicTables();
   const url = new URL(window.location.href);
   url.searchParams.set("table", code);
   history.replaceState(null, "", url);
@@ -281,7 +418,15 @@ async function subscribeTable(code) {
   );
 }
 
-function leaveTable() {
+// Explicit "나가기" click -- unlike a refresh (which never calls this at
+// all, so the "already seated -> rejoin" path in joinTable()/
+// enterPublicTable() still works for that case), this really does vacate
+// the seat in Firestore. Needed so the fixed public tables don't just fill
+// up to MAX_PLAYERS with people who clicked away and never come back.
+async function leaveTable() {
+  const codeLeaving = currentTableCode;
+  const uidLeaving = currentUser ? currentUser.uid : null;
+
   if (unsubscribeTable) {
     unsubscribeTable();
     unsubscribeTable = null;
@@ -292,7 +437,57 @@ function leaveTable() {
   const url = new URL(window.location.href);
   url.searchParams.delete("table");
   history.replaceState(null, "", url);
-  showScreen("lobby");
+  enterLobby();
+
+  if (!codeLeaving || !uidLeaving) return;
+  try {
+    const fsHandle = await ensureFirestore();
+    if (!fsHandle) return;
+    const { db, api } = fsHandle;
+    const ref = api.doc(db, "blackjack-tables", codeLeaving);
+    await api.runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (!data.players[uidLeaving]) return;
+
+      const newOrder = data.playerOrder.filter((u) => u !== uidLeaving);
+      if (newOrder.length === 0) {
+        // Nobody left -- reset to a clean reusable slot instead of leaving
+        // a stale deck/dealer hand around for whoever sits down next.
+        tx.set(ref, {
+          hostUid: null,
+          status: "waiting",
+          playerOrder: [],
+          players: {},
+          deck: [],
+          dealerHand: [],
+          dealerRevealed: false,
+          turnUid: null,
+          createdAt: data.createdAt,
+          updatedAt: Date.now(),
+        });
+        return;
+      }
+
+      const newPlayers = { ...data.players };
+      delete newPlayers[uidLeaving];
+      const update = { playerOrder: newOrder, players: newPlayers, updatedAt: Date.now() };
+      if (data.hostUid === uidLeaving) update.hostUid = newOrder[0];
+      if (data.turnUid === uidLeaving) {
+        // They were mid-turn -- hand it off the same way standing would
+        // (findNextTurnUid already skips uidLeaving itself and only looks
+        // at players still "playing", so it's safe to call against the
+        // pre-removal `data` here).
+        const next = findNextTurnUid(data, uidLeaving);
+        update.turnUid = next;
+        if (!next && data.status === "playing") update.status = "dealerTurn";
+      }
+      tx.update(ref, update);
+    });
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 // Shared by starting the very first round and every "다음 판" afterwards --
@@ -682,7 +877,8 @@ const STATUS_LABELS = {
 function renderTable() {
   if (!tableData || !currentUser) return;
   showScreen("table");
-  tableCodeLabelEl.textContent = `테이블 코드: ${currentTableCode}`;
+  const publicName = tableDisplayName(currentTableCode);
+  tableCodeLabelEl.textContent = publicName || `테이블 코드: ${currentTableCode}`;
 
   const isHost = currentUser.uid === tableData.hostUid;
   const me = tableData.players[currentUser.uid];
@@ -852,10 +1048,12 @@ function onAccountReady() {
     return;
   }
   const tableParam = new URLSearchParams(window.location.search).get("table");
-  if (tableParam) {
+  if (tableParam && PUBLIC_TABLE_IDS.includes(tableParam)) {
+    enterPublicTable(tableParam);
+  } else if (tableParam) {
     joinTable(tableParam);
   } else {
-    showScreen("lobby");
+    enterLobby();
   }
 }
 
