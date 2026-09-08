@@ -434,6 +434,48 @@ button:disabled {
   padding: 8px 12px;
 }
 
+.preset-plus {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+.preset-plus:hover {
+  border-color: #60a5fa;
+  background: rgba(59, 130, 246, 0.28);
+}
+
+.preset-minus {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+.preset-minus:hover {
+  border-color: #f87171;
+  background: rgba(239, 68, 68, 0.28);
+}
+
+/* 초기화: a plain "undo" action, kept neutral/muted so it doesn't compete
+   with the amount buttons above. 올인: the one high-stakes action here, so
+   it gets the site's own accent gradient (same one confirm-bet-btn uses)
+   to stand out as deliberately different from a regular preset. */
+.bet-reset-btn {
+  color: var(--text-dim);
+  border-style: dashed;
+}
+
+.bet-allin-btn {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.bet-allin-btn:hover {
+  filter: brightness(1.08);
+}
+
 .action-controls {
   display: flex;
   flex-wrap: wrap;
