@@ -65,15 +65,17 @@
       </div>
     </div>
 
-    <div class="dealer-area">
-      <p class="dealer-label">딜러</p>
-      <div id="dealer-hand" class="hand-row"></div>
-      <p id="dealer-value" class="hand-value"></p>
+    <div class="felt-table">
+      <div class="dealer-area">
+        <p class="dealer-label">딜러</p>
+        <div id="dealer-hand" class="hand-row"></div>
+        <p id="dealer-value" class="hand-value"></p>
+      </div>
+
+      <p id="round-status-label" class="round-status-label"></p>
+
+      <div id="seats" class="seats"></div>
     </div>
-
-    <p id="round-status-label" class="round-status-label"></p>
-
-    <div id="seats" class="seats"></div>
 
     <div id="host-controls" class="host-controls" hidden>
       <button id="start-round-btn">게임 시작</button>
@@ -93,6 +95,7 @@
         <button id="confirm-bet-btn" class="lobby-primary-btn">베팅 확정</button>
       </div>
       <div id="action-controls" class="action-controls" hidden>
+        <p id="my-hand-value-label" class="my-hand-value-label"></p>
         <button id="hit-btn">히트</button>
         <button id="stand-btn">스탠드</button>
         <button id="double-btn">더블다운</button>

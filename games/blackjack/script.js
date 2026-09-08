@@ -104,6 +104,7 @@ const actionControlsEl = document.getElementById("action-controls");
 const hitBtn = document.getElementById("hit-btn");
 const standBtn = document.getElementById("stand-btn");
 const doubleBtn = document.getElementById("double-btn");
+const myHandValueLabelEl = document.getElementById("my-hand-value-label");
 
 const SCREENS = {
   "login-required": loginRequiredEl,
@@ -634,6 +635,7 @@ function renderTable() {
   }
   if (iAmActing) {
     doubleBtn.disabled = me.hand.length !== 2 || me.chips < me.bet * 2;
+    myHandValueLabelEl.textContent = `내 합계: ${handValue(me.hand)}`;
   }
 }
 

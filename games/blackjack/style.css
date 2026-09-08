@@ -154,19 +154,58 @@ button:disabled {
   gap: 8px;
 }
 
+/* The green-felt "table" itself -- dealer area, status line, and seats
+   all sit directly on it rather than in their own separate boxes, so the
+   whole thing reads as one table instead of a stack of cards. The wide
+   flat border-radius (large horizontal radius, small vertical one) is
+   the classic CSS trick for a stretched oval/stadium shape -- looks right
+   as long as the container is noticeably wider than it is tall, which it
+   is here (max-width 720px, seats wrap into rows below the dealer). */
+.felt-table {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 50% 35%, #1f7a45 0%, #145c34 55%, #0d3f24 100%);
+  border: 10px solid #6b4423;
+  border-radius: 50% / 10%;
+  padding: 36px clamp(20px, 6vw, 60px) 28px;
+  margin-bottom: 16px;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 3px rgba(255, 214, 153, 0.15),
+    inset 0 0 50px rgba(0, 0, 0, 0.35);
+}
+
+/* Faint watermark so the empty felt doesn't look bare before any cards
+   are dealt -- purely decorative, sits behind everything else. */
+.felt-table::before {
+  content: "♠ BLACKJACK ♣";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.4rem;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.felt-table > * {
+  position: relative;
+}
+
 .dealer-area {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
   margin-bottom: 14px;
 }
 
 .dealer-label {
   margin: 0 0 8px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.75);
   font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .hand-row {
@@ -204,13 +243,17 @@ button:disabled {
 .hand-value {
   margin: 8px 0 0;
   font-weight: 700;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .round-status-label {
+  display: inline-block;
   font-weight: 700;
   margin: 0 0 14px;
-  color: var(--accent-2);
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fde68a;
   min-height: 1.4em;
 }
 
@@ -218,24 +261,24 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
-  margin-bottom: 16px;
 }
 
 .seat {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: rgba(11, 12, 16, 0.55);
+  backdrop-filter: blur(2px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   padding: 12px;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .seat.is-turn {
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 1px var(--accent-2);
+  border-color: #fde68a;
+  box-shadow: 0 0 0 1px #fde68a, 0 0 14px rgba(253, 230, 138, 0.35);
 }
 
 .seat.is-me {
-  background: var(--surface-hover);
+  background: rgba(11, 12, 16, 0.75);
 }
 
 .seat-name-row {
@@ -307,8 +350,17 @@ button:disabled {
 
 .action-controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
+}
+
+.my-hand-value-label {
+  flex-basis: 100%;
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fde68a;
 }
 
 .action-controls button {
