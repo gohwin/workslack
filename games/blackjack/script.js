@@ -448,6 +448,14 @@ async function maybeDeal() {
   if (dealing || !tableData || tableData.status !== "betting") return;
   if (!allPlayersReadyToDeal(tableData)) return;
   dealing = true;
+  // try/finally, not try/catch-then-a-statement -- the early `return`s below
+  // (fsHandle missing, nobody actually bet) exit the whole function, so a
+  // plain statement after the try/catch never ran on those paths and
+  // `dealing` stayed stuck `true` forever. That's exactly what happened
+  // when every seated player bet 0: the "back to waiting" write went
+  // through fine, but every *following* attempt to deal silently no-opped
+  // on the `if (dealing ...) return;` guard above, since it was never
+  // cleared -- the table just sat on "betting" permanently.
   try {
     const activeUids = tableData.playerOrder.filter((uid) => tableData.players[uid].bet > 0);
     const fsHandle = await ensureFirestore();
@@ -477,8 +485,9 @@ async function maybeDeal() {
     await api.updateDoc(ref, update);
   } catch (err) {
     console.error(err);
+  } finally {
+    dealing = false;
   }
-  dealing = false;
 }
 
 // Searches every OTHER seat in turn order, starting right after afterUid,
@@ -552,6 +561,7 @@ async function playerAction(action) {
 async function resolveDealerTurn() {
   if (dealerResolving || !tableData) return;
   dealerResolving = true;
+  // try/finally -- see the identical fix + explanation in maybeDeal() above.
   try {
     let dealerHand = [...tableData.dealerHand];
     let deck = [...tableData.deck];
@@ -609,8 +619,9 @@ async function resolveDealerTurn() {
     await api.updateDoc(api.doc(db, "blackjack-tables", currentTableCode), update);
   } catch (err) {
     console.error(err);
+  } finally {
+    dealerResolving = false;
   }
-  dealerResolving = false;
 }
 
 function renderCard(card, faceDown) {
