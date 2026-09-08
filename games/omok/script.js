@@ -609,6 +609,10 @@ async function rematch() {
       moveCount: 0,
     };
     renderRoom();
+    // Same as startBotGame(): if the human is white, the bot (black) has
+    // to open -- this was missing here, so a rematch after picking white
+    // just sat waiting for a bot move that was never triggered.
+    if (myRole !== "host") setTimeout(botTakeTurn, BOT_THINK_DELAY_MS);
     return;
   }
   if (!currentRoomCode) return;
