@@ -81,19 +81,25 @@ service cloud.firestore {
                     && request.resource.data.totalScore == 0
                     && request.resource.data.nickname is string
                     && request.resource.data.nickname.size() <= 12;
-      // 점수 적립(증가, 닉네임 불변) 또는 닉네임 변경(점수 불변)만 허용 --
-      // 둘 다 동시에 바뀌는 요청은 막는다. 한 번의 증가 폭에 상한을 두지
-      // 않는다 -- 처음엔 "한 번에 최대 20점"(스도쿠/지뢰찾기 어려움)으로
-      // 맞춰뒀었는데, 타자 연습처럼 한 판에 몇십 점씩도 나오는 게임이 생기자
-      // 그 게임의 정상적인 점수 적립이 그냥 permission-denied로 막혀버렸다.
-      // 게임마다 점수 스케일이 다르고 앞으로도 계속 게임이 늘어날 걸 감안하면
-      // 상한을 게임 종류에 맞춰 계속 따라 올리는 것보다, 애초에 상한을 두지
-      // 않는 게 낫다 -- 이 사이트의 위협 모델(캐주얼 점수 제도, Cloud
-      // Functions 없이 클라이언트 증가값을 규칙으로만 검증)에서는 "본인 계정만
-      // 건드릴 수 있다"가 실질적인 방어선이지, 증가 폭 상한이 아니었다.
+      // 점수 변경(닉네임 불변) 또는 닉네임 변경(점수 불변)만 허용 -- 둘 다
+      // 동시에 바뀌는 요청은 막는다. 변경 폭이나 방향(증가/감소)에 상한을
+      // 두지 않는다 -- 처음엔 "증가만 허용, 한 번에 최대 20점"이었는데
+      // 두 가지 이유로 풀었다: (1) 타자 연습처럼 한 판에 몇십 점씩도 나오는
+      // 게임이 생기자 그 게임의 정상적인 점수 적립이 그냥
+      // permission-denied로 막혀버렸다. 게임마다 점수 스케일이 다르고
+      // 앞으로도 계속 게임이 늘어날 걸 감안하면 상한을 게임 종류에 맞춰
+      // 계속 따라 올리는 것보다, 애초에 상한을 두지 않는 게 낫다.
+      // (2) games/blackjack의 칩 교환(환전/현금화, games/blackjack/script.js의
+      // buyChips()/cashOutChips())은 본인 점수를 스스로 깎거나 늘리는
+      // 정상적인 동작이라 "증가만 허용"으로는 아예 막혀버린다. 이 사이트의
+      // 위협 모델(캐주얼 점수 제도, Cloud Functions 없이 클라이언트
+      // 값을 규칙으로만 검증)에서는 "본인 계정만 건드릴 수 있다"가 실질적인
+      // 방어선이지, 변경 폭/방향 상한이 아니었다 -- 어차피 이미 증가 폭에도
+      // 상한이 없어서 스스로 점수를 마음대로 올리는 것 자체는 막을 수
+      // 없었으니, 감소를 막아봐야 얻는 방어 효과가 없다.
       allow update: if request.auth != null && request.auth.uid == uid
                     && (
-                      (request.resource.data.totalScore > resource.data.totalScore
+                      (request.resource.data.totalScore is number
                        && request.resource.data.nickname == resource.data.nickname)
                       ||
                       (request.resource.data.totalScore == resource.data.totalScore

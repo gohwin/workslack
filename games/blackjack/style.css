@@ -154,6 +154,46 @@ button:disabled {
   gap: 8px;
 }
 
+.exchange-controls {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.exchange-info {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.exchange-info strong {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.exchange-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.exchange-amount-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.exchange-amount-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* The green-felt "table" itself -- dealer area, status line, and seats
    all sit directly on it rather than in their own separate boxes, so the
    whole thing reads as one table instead of a stack of cards. The wide

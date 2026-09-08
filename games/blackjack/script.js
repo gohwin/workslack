@@ -5,8 +5,21 @@
 // (same reasoning as games/omok) -- several people share one table, and a
 // refresh needs to reclaim the right seat.
 //
-// Chips are NOT persisted to an account -- everyone who joins a table
-// starts fresh at STARTING_CHIPS and it resets again if they ever hit 0.
+// Chips are a real "buy-in" against the account's site-wide totalScore --
+// deliberately, for a bit of actual stakes (see the commit message for the
+// discussion). A player starts a table with 0 chips and has to explicitly
+// "환전" (exchange) some of their real score for chips before betting;
+// they can "현금화" (cash out) chips back to real score any time they're
+// not mid-turn. Only those two explicit actions touch totalScore, and a
+// player only ever does so to their OWN account doc -- exactly the
+// existing "only your own account doc" Firestore rule, no changes needed
+// there beyond allowing totalScore to decrease (a buy-in spends it).
+//
+// Everything WITHIN a round (bets, hits, wins, losses) only ever moves
+// chips -- the ephemeral, host-resolved table-local field it always was.
+// A loss during play never touches your real score; only cashing out
+// (or not) decides whether a session's chip swings actually stick.
+//
 // There's no player-vs-player secrecy in blackjack (everyone's hand is
 // always visible at a real table; only the dealer's hole card is hidden),
 // so unlike a hypothetical hidden-hand game there's no need for
@@ -14,7 +27,6 @@
 // shared, fully-readable document, same shape as games/omok's room.
 
 const MAX_PLAYERS = 6;
-const STARTING_CHIPS = 1000;
 const TABLE_CODE_LENGTH = 6;
 const TABLE_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
 
@@ -85,6 +97,12 @@ const tableCodeLabelEl = document.getElementById("table-code-label");
 const copyLinkBtn = document.getElementById("copy-link-btn");
 const leaveTableBtn = document.getElementById("leave-table-btn");
 
+const myScoreLabelEl = document.getElementById("my-score-label");
+const myChipsLabelEl = document.getElementById("my-chips-label");
+const exchangeAmountInputEl = document.getElementById("exchange-amount-input");
+const buyChipsBtn = document.getElementById("buy-chips-btn");
+const cashOutBtn = document.getElementById("cash-out-btn");
+
 const dealerHandEl = document.getElementById("dealer-hand");
 const dealerValueEl = document.getElementById("dealer-value");
 const roundStatusLabelEl = document.getElementById("round-status-label");
@@ -131,7 +149,7 @@ function generateTableCode() {
 }
 
 function newSeatedPlayer(nickname) {
-  return { nickname, chips: STARTING_CHIPS, bet: 0, hand: [], status: "seated", result: null };
+  return { nickname, chips: 0, bet: 0, hand: [], status: "seated", result: null };
 }
 
 async function createTable() {
@@ -279,9 +297,11 @@ function leaveTable() {
 }
 
 // Shared by starting the very first round and every "다음 판" afterwards --
-// resets every seated player's hand/bet/status, refills anyone at 0 chips
-// back to STARTING_CHIPS (chips are ephemeral per-table, not a persistent
-// economy -- see the file header), and moves the table into "betting".
+// resets every seated player's hand/bet/status and moves the table into
+// "betting". Chips are left untouched here -- they only ever change via
+// betting/payouts during a round or an explicit 환전/현금화 (see the file
+// header), never reset by starting a new one. A player sitting on 0 chips
+// just can't bet anything until they buy back in.
 async function startRound() {
   if (!tableData || !currentUser || currentUser.uid !== tableData.hostUid) return;
   const fsHandle = await ensureFirestore();
@@ -298,8 +318,6 @@ async function startRound() {
     updatedAt: Date.now(),
   };
   for (const uid of tableData.playerOrder) {
-    const p = tableData.players[uid];
-    update[`players.${uid}.chips`] = p.chips > 0 ? p.chips : STARTING_CHIPS;
     update[`players.${uid}.bet`] = 0;
     update[`players.${uid}.hand`] = [];
     update[`players.${uid}.status`] = "betting";
@@ -327,6 +345,97 @@ async function confirmBet(amount) {
   // hasn't been updated with the bet just written above yet, so checking
   // readiness against it here would use stale data and could wrongly
   // decide "not everyone's ready" even when this was the last bet needed.
+}
+
+// Spends real site score for table chips -- the only place chips ever
+// come from (see the file header). Wrapped in a transaction spanning both
+// documents (the account doc and the table doc) so a mid-flight failure
+// can't dock your score without ever actually granting the chips -- two
+// separate non-transactional writes would risk exactly that. A player can
+// only ever do this to their own account doc, so it fits the existing
+// "only your own account" Firestore rule with just one change: that rule
+// has to start allowing totalScore to *decrease* too, since every other
+// game on the site only ever adds to it.
+async function buyChips(amount) {
+  if (!tableData || !currentUser || !currentTableCode) return;
+  const requested = Math.max(0, Math.floor(amount));
+  if (requested <= 0) return;
+  const fsHandle = await ensureFirestore();
+  if (!fsHandle) return;
+  const { db, api } = fsHandle;
+  const userRef = api.doc(db, "crossword-users", currentUser.uid);
+  const tableRefDoc = api.doc(db, "blackjack-tables", currentTableCode);
+  let newScore = null;
+  try {
+    await api.runTransaction(db, async (tx) => {
+      const userSnap = await tx.get(userRef);
+      const tableSnap = await tx.get(tableRefDoc);
+      const userData = userSnap.data();
+      const liveTable = tableSnap.data();
+      const spend = Math.min(requested, userData.totalScore);
+      if (spend <= 0) return;
+      newScore = userData.totalScore - spend;
+      tx.update(userRef, { totalScore: newScore });
+      tx.update(tableRefDoc, {
+        [`players.${currentUser.uid}.chips`]: (liveTable.players[currentUser.uid]?.chips || 0) + spend,
+        updatedAt: Date.now(),
+      });
+    });
+    if (newScore !== null) {
+      currentUser.totalScore = newScore;
+      if (typeof renderAccountUI === "function") renderAccountUI();
+      // The table doc's own onSnapshot listener can fire (from the write
+      // inside the transaction above) before this line runs, so it may
+      // have already re-rendered the table screen using the OLD
+      // currentUser.totalScore -- re-render now that it's actually
+      // current, or the 내 점수 line here would lag behind the account
+      // header (which renderAccountUI() above always gets right).
+      renderTable();
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// The other half of the buy-in/cash-out pair -- converts chips back to
+// real score, same cross-document transaction for the same reason. Only
+// allowed outside of an active hand (not mid-turn) so a player can't cash
+// out to dodge a bet they've already committed to.
+async function cashOutChips() {
+  if (!tableData || !currentUser || !currentTableCode) return;
+  if (tableData.status === "playing" && tableData.turnUid === currentUser.uid) return;
+  const fsHandle = await ensureFirestore();
+  if (!fsHandle) return;
+  const { db, api } = fsHandle;
+  const userRef = api.doc(db, "crossword-users", currentUser.uid);
+  const tableRefDoc = api.doc(db, "blackjack-tables", currentTableCode);
+  let newScore = null;
+  try {
+    await api.runTransaction(db, async (tx) => {
+      const userSnap = await tx.get(userRef);
+      const tableSnap = await tx.get(tableRefDoc);
+      const userData = userSnap.data();
+      const liveTable = tableSnap.data();
+      const amount = liveTable.players[currentUser.uid]?.chips || 0;
+      if (amount <= 0) return;
+      newScore = userData.totalScore + amount;
+      tx.update(userRef, { totalScore: newScore });
+      tx.update(tableRefDoc, { [`players.${currentUser.uid}.chips`]: 0, updatedAt: Date.now() });
+    });
+    if (newScore !== null) {
+      currentUser.totalScore = newScore;
+      if (typeof renderAccountUI === "function") renderAccountUI();
+      // The table doc's own onSnapshot listener can fire (from the write
+      // inside the transaction above) before this line runs, so it may
+      // have already re-rendered the table screen using the OLD
+      // currentUser.totalScore -- re-render now that it's actually
+      // current, or the 내 점수 line here would lag behind the account
+      // header (which renderAccountUI() above always gets right).
+      renderTable();
+    }
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 // Runs on the host's client only, via the snapshot listener -- once nobody
@@ -547,6 +656,13 @@ function renderTable() {
   const isHost = currentUser.uid === tableData.hostUid;
   const me = tableData.players[currentUser.uid];
 
+  // Score <-> chip exchange
+  myScoreLabelEl.textContent = currentUser.totalScore;
+  myChipsLabelEl.textContent = me ? me.chips : 0;
+  const myTurnActive = tableData.status === "playing" && tableData.turnUid === currentUser.uid;
+  buyChipsBtn.disabled = currentUser.totalScore <= 0;
+  cashOutBtn.disabled = !me || me.chips <= 0 || myTurnActive;
+
   // Dealer
   dealerHandEl.innerHTML = "";
   tableData.dealerHand.forEach((card, i) => {
@@ -649,6 +765,14 @@ joinCodeInputEl.addEventListener("keydown", (e) => {
 leaveTableBtn.addEventListener("click", leaveTable);
 startRoundBtn.addEventListener("click", startRound);
 nextRoundBtn.addEventListener("click", startRound);
+
+buyChipsBtn.addEventListener("click", () => {
+  const amount = Number(exchangeAmountInputEl.value);
+  if (!amount || amount <= 0) return;
+  buyChips(amount);
+  exchangeAmountInputEl.value = "";
+});
+cashOutBtn.addEventListener("click", cashOutChips);
 
 document.querySelectorAll(".bet-preset-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
