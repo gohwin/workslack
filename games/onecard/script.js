@@ -138,6 +138,25 @@ let currentTableCode = null;
 let tableData = null;
 let unsubscribeTable = null;
 
+// Back button / closing the tab never runs leaveTable() at all -- it's a
+// real page navigation (this app has no client-side router, so "back"
+// leaves the page entirely), and there's no way to run our own async
+// Firestore cleanup during that unload. The best available warning is the
+// browser's own native "leave site?" confirmation, whose wording every
+// modern browser hardcodes -- setting e.returnValue can't customize the
+// text to say "나가기를 눌러주세요" specifically, only trigger the generic
+// prompt. Still worth it: a player who's actually seated somewhere (any
+// status -- even "waiting", since starting a round later would drag an
+// already-abandoned seat into the turn rotation, same problem as leaving
+// mid-round) gets one extra confirmation click before they can navigate
+// away by accident. Doesn't stop a deliberate "leave anyway," a tab crash,
+// or losing network -- only the accidental case, which is most of them.
+window.addEventListener("beforeunload", (e) => {
+  if (!tableData || !currentUser || !tableData.players[currentUser.uid]) return;
+  e.preventDefault();
+  e.returnValue = "";
+});
+
 function generateTableCode() {
   let code = "";
   for (let i = 0; i < TABLE_CODE_LENGTH; i++) {
