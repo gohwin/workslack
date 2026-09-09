@@ -445,6 +445,8 @@ const hpFillEl = document.getElementById("hp-fill");
 const xpFillEl = document.getElementById("xp-fill");
 const hpTextEl = document.getElementById("hp-text");
 const xpTextEl = document.getElementById("xp-text");
+const bossHpFillEl = document.getElementById("boss-hp-fill");
+const bossHpTextEl = document.getElementById("boss-hp-text");
 const levelupModalEl = document.getElementById("levelup-modal");
 const levelupTitleEl = document.getElementById("levelup-title");
 const levelupOptionsEl = document.getElementById("levelup-options");
@@ -862,6 +864,13 @@ function updateHud() {
   xpFillEl.style.width = `${Math.min(100, (xp / xpToNext) * 100)}%`;
   hpTextEl.textContent = `${Math.max(0, Math.round(player.hp))} / ${player.maxHp}`;
   xpTextEl.textContent = `${xp} / ${xpToNext}`;
+  // Only one boss is ever alive at a time (spawnEnemy()'s caller guards on
+  // !enemies.some(isBoss) before spawning another), so there's never a
+  // "which one" ambiguity here. Empty (0%, blank text) rather than hidden
+  // when there's none -- see the CSS comment on .boss-hp-fill for why.
+  const boss = enemies.find((e) => e.isBoss);
+  bossHpFillEl.style.width = boss ? `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%` : "0%";
+  bossHpTextEl.textContent = boss ? `${Math.max(0, Math.round(boss.hp))} / ${Math.round(boss.maxHp)}` : "";
   renderStatsSidebar();
   renderEnemyStatsSidebar();
 }

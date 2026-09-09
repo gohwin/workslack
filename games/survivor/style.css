@@ -346,6 +346,21 @@ button:hover {
   background: linear-gradient(90deg, var(--accent), var(--accent-2));
 }
 
+/* Timer moved here from .status-bar so it sits right next to the thing
+   it's now most useful alongside -- a boss fight, since "how long has this
+   been going" matters more mid-fight than it does the rest of the run.
+   Wider than the 24px HP/XP labels since "00:00" doesn't fit in that. */
+.boss-timer-label {
+  width: 40px;
+}
+
+/* Empty (width 0%, see updateHud()) whenever no boss is alive, rather than
+   hiding the whole row -- keeps the timer next to it from jumping position
+   every time a boss spawns/dies. */
+.boss-hp-fill {
+  background: linear-gradient(90deg, #7f1d1d, #ef4444);
+}
+
 .canvas-wrapper {
   position: relative;
   /* JS (fitBoardToViewport in script.js) overrides this with the largest
