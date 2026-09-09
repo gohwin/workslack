@@ -459,7 +459,6 @@ const bossBannerEl = document.getElementById("boss-banner");
 const myStatsSidebarEl = document.getElementById("my-stats-sidebar");
 const enemyStatsSidebarEl = document.getElementById("enemy-stats-sidebar");
 const statsListEl = document.getElementById("stats-list");
-const enemyGeneralListEl = document.getElementById("enemy-general-list");
 const enemyTypeGroupsEl = document.getElementById("enemy-type-groups");
 
 renderBestRecord();
@@ -746,28 +745,21 @@ function renderStatsSidebar() {
 const ENEMY_TYPE_LABELS = { normal: "일반", speedster: "스피드형", brute: "브루트" };
 
 // Mirrors renderStatsSidebar() but for what the enemies are currently doing
-// -- everything here is the same math spawnEnemy()/currentSpawnIntervalMs()
-// use, just surfaced live so "it's escalating" isn't only felt, it's seen.
-// A single "기본 체력/이동속도" row used to stand in for every enemy type at
-// once, which only ever actually described "normal" -- once speedster/brute
-// unlock (see pickEnemyType()) there was no way to tell their real hp/speed
-// apart, so this now renders one group per currently-unlocked type with its
-// own numbers (hpMult/speedMult from ENEMY_TYPES applied on top of the same
-// time-scaled base spawnEnemy() uses).
+// -- everything here is the same math spawnEnemy() uses, just surfaced live
+// so "it's escalating" isn't only felt, it's seen. A single "기본 체력/
+// 이동속도" row used to stand in for every enemy type at once, which only
+// ever actually described "normal" -- once speedster/brute unlock (see
+// pickEnemyType()) there was no way to tell their real hp/speed apart, so
+// this renders one group per currently-unlocked type with its own numbers
+// (hpMult/speedMult from ENEMY_TYPES applied on top of the same time-scaled
+// base spawnEnemy() uses). Spawn interval and next-boss countdown used to
+// live here too, in a general-info list above these groups -- dropped once
+// the boss hp bar (see updateHud()) started showing the next-boss countdown
+// itself, which made this sidebar's copy of it redundant, and spawn
+// interval wasn't something anyone actually needed a live number for.
 function renderEnemyStatsSidebar() {
   const baseHp = enemyBaseHp(elapsedSeconds);
   const baseSpeed = Math.min(ENEMY_SPEED_CAP, ENEMY_BASE_SPEED + elapsedSeconds * ENEMY_SPEED_PER_SEC);
-  const spawnSec = (currentSpawnIntervalMs() / 1000).toFixed(2);
-  const bossAlive = enemies.some((e) => e.isBoss);
-  const bossStatus = bossAlive ? "전투 중!" : `${Math.max(0, Math.ceil(nextBossAt - elapsedSeconds))}초 후`;
-
-  const generalRows = [
-    ["스폰 간격", `${spawnSec}초`],
-    ["다음 보스", bossStatus],
-  ];
-  enemyGeneralListEl.innerHTML = generalRows
-    .map(([label, value]) => `<li><span>${label}</span><span>${value}</span></li>`)
-    .join("");
 
   const unlockedTypeKeys = ["normal"];
   if (bossesKilled >= 2) unlockedTypeKeys.push("speedster");
@@ -866,11 +858,18 @@ function updateHud() {
   xpTextEl.textContent = `${xp} / ${xpToNext}`;
   // Only one boss is ever alive at a time (spawnEnemy()'s caller guards on
   // !enemies.some(isBoss) before spawning another), so there's never a
-  // "which one" ambiguity here. Empty (0%, blank text) rather than hidden
-  // when there's none -- see the CSS comment on .boss-hp-fill for why.
+  // "which one" ambiguity here. Bar stays empty (0%) rather than hidden
+  // when there's none -- see the CSS comment on .boss-hp-fill for why --
+  // and the text slot doubles up as the next-boss countdown in that case,
+  // which used to live in the now-removed enemy-info sidebar list.
   const boss = enemies.find((e) => e.isBoss);
-  bossHpFillEl.style.width = boss ? `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%` : "0%";
-  bossHpTextEl.textContent = boss ? `${Math.max(0, Math.round(boss.hp))} / ${Math.round(boss.maxHp)}` : "";
+  if (boss) {
+    bossHpFillEl.style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
+    bossHpTextEl.textContent = `${Math.max(0, Math.round(boss.hp))} / ${Math.round(boss.maxHp)}`;
+  } else {
+    bossHpFillEl.style.width = "0%";
+    bossHpTextEl.textContent = `다음 보스: ${Math.max(0, Math.ceil(nextBossAt - elapsedSeconds))}초 후`;
+  }
   renderStatsSidebar();
   renderEnemyStatsSidebar();
 }

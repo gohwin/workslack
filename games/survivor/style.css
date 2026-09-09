@@ -322,6 +322,11 @@ button:hover {
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
+  /* The boss row's value slot doubles as a "다음 보스: N초 후" countdown
+     between fights (see updateHud()) -- much longer than every other
+     bar-value's plain "N / N", so it needs an explicit no-wrap or a narrow
+     .bar-row width would wrap it onto a second line. */
+  white-space: nowrap;
 }
 
 .bar {
