@@ -64,6 +64,19 @@ let isBotGame = false;
 let botDifficulty = "hard"; // "easy" | "hard" -- see pickBotMove()
 let humanColor = "host"; // "host" (black, goes first) | "guest" (white) -- picked in the lobby, only used for bot games
 
+// Warn before an accidental back/close mid-room -- there's a real opponent
+// on the other end who'd otherwise be left waiting on a turn that's never
+// coming (bot games are excluded: it's all local state, nobody else is
+// affected by leaving). Doesn't fire for a click on "나가기" itself since
+// that's a same-page screen switch, not a real navigation. The browser
+// controls the dialog's actual wording -- this can only trigger the
+// generic native prompt, not a custom message.
+window.addEventListener("beforeunload", (e) => {
+  if (isBotGame || !currentRoomCode) return;
+  e.preventDefault();
+  e.returnValue = "";
+});
+
 function generateRoomCode() {
   let code = "";
   for (let i = 0; i < ROOM_CODE_LENGTH; i++) {

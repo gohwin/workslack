@@ -166,7 +166,96 @@ function generateTableCode() {
 }
 
 function newSeatedPlayer(nickname) {
-  return { nickname, hand: [] };
+  return { nickname, hand: [], lastSeenAt: Date.now() };
+}
+
+// beforeunload (above) turned out not to reliably fire for the browser
+// back button -- confirmed by hand, not just a guess -- so it can't
+// actually prevent someone from abandoning their seat mid-round. This is
+// the real fix: rather than trying to stop them from leaving, detect that
+// whoever's turn it currently is has gone quiet and auto-draw-and-pass for
+// them, the same way drawCard() would if they'd chosen to draw themselves.
+// Never auto-*plays* a card on their behalf -- only the safe, minimal-
+// impact "pass" action, since guessing which card they'd have wanted to
+// play would be actually making a strategic choice for a real person who
+// might come back. Same heartbeat/staleness shape as games/blackjack's.
+const HEARTBEAT_INTERVAL_MS = 20 * 1000;
+const STALE_MS = 3 * 60 * 1000;
+const STALE_CHECK_INTERVAL_MS = 20 * 1000;
+let heartbeatTimer = null;
+let staleCheckTimer = null;
+
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatTimer = setInterval(() => {
+    if (!currentTableCode || !currentUser || !tableData || !tableData.players[currentUser.uid]) return;
+    ensureFirestore().then((fsHandle) => {
+      if (!fsHandle) return;
+      const { db, api } = fsHandle;
+      api
+        .updateDoc(api.doc(db, "onecard-tables", currentTableCode), {
+          [`players.${currentUser.uid}.lastSeenAt`]: Date.now(),
+        })
+        .catch((err) => console.error(err));
+    });
+  }, HEARTBEAT_INTERVAL_MS);
+  staleCheckTimer = setInterval(checkStaleTurn, STALE_CHECK_INTERVAL_MS);
+}
+
+function stopHeartbeat() {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
+  if (staleCheckTimer) {
+    clearInterval(staleCheckTimer);
+    staleCheckTimer = null;
+  }
+}
+
+// Runs on every seated client's own timer (not a single host-authority,
+// unlike games/blackjack's dealing logic) -- whichever client's check
+// fires first and wins the transaction race actually applies it; every
+// other client's check either finds it's already not stale anymore (turn
+// already moved) or the transaction's fresh read disagrees, and just no-ops
+// harmlessly. Only ever looks at whoever's turn it CURRENTLY is -- doesn't
+// try to catch up on anyone else's inactivity.
+async function checkStaleTurn() {
+  if (!tableData || !currentTableCode || tableData.status !== "playing" || !tableData.turnUid) return;
+  const stuckUid = tableData.turnUid;
+  const stuckPlayer = tableData.players[stuckUid];
+  if (!stuckPlayer) return;
+  if (Date.now() - (stuckPlayer.lastSeenAt || 0) <= STALE_MS) return;
+
+  const fsHandle = await ensureFirestore();
+  if (!fsHandle) return;
+  const { db, api } = fsHandle;
+  const ref = api.doc(db, "onecard-tables", currentTableCode);
+  try {
+    await api.runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (data.status !== "playing" || data.turnUid !== stuckUid) return; // already moved on
+      const me = data.players[stuckUid];
+      if (!me || Date.now() - (me.lastSeenAt || 0) <= STALE_MS) return; // came back just in time
+
+      const order = data.playerOrder;
+      const myIdx = order.indexOf(stuckUid);
+      const state = { drawPile: [...data.drawPile], discardPile: [...data.discardPile] };
+      const drawn = drawNCards(state, 1);
+
+      tx.update(ref, {
+        [`players.${stuckUid}.hand`]: [...me.hand, ...drawn],
+        drawPile: state.drawPile,
+        discardPile: state.discardPile,
+        turnUid: order[stepIndex(order, myIdx, data.direction, 1)],
+        updatedAt: Date.now(),
+      });
+    });
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 async function createTable() {
@@ -267,6 +356,7 @@ function enterTable(code) {
   url.searchParams.set("table", code);
   history.replaceState(null, "", url);
   subscribeTable(code);
+  startHeartbeat();
 }
 
 async function subscribeTable(code) {
@@ -352,6 +442,7 @@ async function leaveTable() {
   const codeLeaving = currentTableCode;
   const uidLeaving = currentUser ? currentUser.uid : null;
 
+  stopHeartbeat();
   if (unsubscribeTable) {
     unsubscribeTable();
     unsubscribeTable = null;

@@ -152,6 +152,17 @@ let dealing = false; // local re-entrancy guard, see maybeDeal()
 let publicTablesData = {}; // tableId -> doc data | undefined (never created yet)
 let publicTableUnsubs = [];
 
+// Warn before an accidental back/close mid-table -- see games/omok's
+// identical handler for the full reasoning. Doesn't fire for a click on
+// "나가기" itself since that's a same-page screen switch, not a real
+// navigation, and the browser controls the dialog's actual wording (can't
+// be customized to say "나가기를 눌러주세요" specifically).
+window.addEventListener("beforeunload", (e) => {
+  if (!tableData || !currentUser || !tableData.players[currentUser.uid]) return;
+  e.preventDefault();
+  e.returnValue = "";
+});
+
 function generateTableCode() {
   let code = "";
   for (let i = 0; i < TABLE_CODE_LENGTH; i++) {
