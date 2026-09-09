@@ -54,5 +54,12 @@
     "description": "최대 6명이 테이블에 모여 딜러와 겨루는 블랙잭. 점수를 칩으로 환전해서 진짜 걸어요 (로그인 필요)",
     "path": "games/blackjack/index.html",
     "thumbnail": "games/blackjack/thumbnail.svg"
+  },
+  {
+    "id": "onecard",
+    "title": "원카드",
+    "description": "2~6명이 테이블에 모여 손패를 가장 먼저 비우는 사람이 승리하는 원카드 (로그인 필요)",
+    "path": "games/onecard/index.html",
+    "thumbnail": "games/onecard/thumbnail.svg"
   }
 ]

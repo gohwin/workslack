@@ -1,0 +1,402 @@
+body {
+  margin: 0;
+  /* No top padding -- the shared sticky nav bar (site-header.css) already
+     has its own margin-bottom for spacing before this page's content. */
+  padding: 0 16px 48px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Pretendard, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  text-align: center;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 10px 16px;
+}
+
+button:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-hover);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Shared "centered message" screens (login-required / lobby) -- same
+   pattern as games/blackjack, games/omok. */
+
+.notice-screen,
+.lobby-screen {
+  max-width: 420px;
+  margin: 48px auto 0;
+  padding: 0 8px;
+}
+
+.notice-title,
+.lobby-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin: 0 0 10px;
+}
+
+.notice-sub,
+.lobby-sub {
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 0 24px;
+}
+
+.lobby-actions {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.lobby-primary-btn {
+  width: 100%;
+  padding: 14px 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--accent-text);
+}
+
+.lobby-primary-btn:hover {
+  filter: brightness(1.08);
+}
+
+.lobby-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin: 18px 0;
+}
+
+.lobby-divider::before,
+.lobby-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.join-row {
+  display: flex;
+  gap: 8px;
+}
+
+.join-code-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.join-code-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.lobby-error {
+  color: #f87171;
+  font-size: 0.85rem;
+  margin: 14px 0 0;
+}
+
+.leave-btn {
+  color: var(--text-dim);
+}
+
+/* Table screen */
+
+.table-screen {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.table-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.table-code-label {
+  margin: 0;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+
+.table-top-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* The green-felt "table" itself -- same stretched-oval trick as
+   games/blackjack's felt-table, kept visually consistent across the
+   site's card games. */
+.felt-table {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 50% 35%, #1f7a45 0%, #145c34 55%, #0d3f24 100%);
+  border: 10px solid #6b4423;
+  border-radius: 50% / 10%;
+  padding: 30px clamp(20px, 6vw, 60px) 28px;
+  margin-bottom: 16px;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 3px rgba(255, 214, 153, 0.15),
+    inset 0 0 50px rgba(0, 0, 0, 0.35);
+}
+
+.felt-table::before {
+  content: "♠ ONE CARD ♣";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.4rem;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.felt-table > * {
+  position: relative;
+}
+
+.direction-indicator {
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  min-height: 1.2em;
+}
+
+.round-status-label {
+  display: inline-block;
+  font-weight: 700;
+  margin: 0 0 14px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fde68a;
+  min-height: 1.4em;
+}
+
+.center-piles {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 28px;
+  margin-bottom: 18px;
+}
+
+.pile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pile-label {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.discard-slot {
+  width: 50px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.playing-card {
+  width: 50px;
+  height: 70px;
+  border-radius: 6px;
+  background: #f5f5f0;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.playing-card.red {
+  color: #c0392b;
+}
+
+.playing-card.back {
+  background: repeating-linear-gradient(135deg, var(--accent), var(--accent) 6px, var(--accent-2) 6px, var(--accent-2) 12px);
+  color: transparent;
+}
+
+.hand-row {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.hand-row .playing-card {
+  width: 26px;
+  height: 38px;
+}
+
+/* Seats -- always exactly MAX_PLAYERS (6) slots (see renderTable()), same
+   fixed 3-column layout as games/blackjack so it reads as chairs around
+   the table instead of a list that reflows every time someone joins. */
+.seats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 460px) {
+  .seats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.seat {
+  background: rgba(11, 12, 16, 0.55);
+  backdrop-filter: blur(2px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 12px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.seat-chair-icon {
+  display: block;
+  text-align: center;
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+}
+
+.seat.seat-empty {
+  background: rgba(11, 12, 16, 0.25);
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.15);
+  text-align: center;
+  opacity: 0.6;
+}
+
+.seat.seat-empty .seat-chair-icon {
+  font-size: 1.7rem;
+  opacity: 0.5;
+}
+
+.seat-empty-label {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.seat.is-turn {
+  border-color: #fde68a;
+  box-shadow: 0 0 0 1px #fde68a, 0 0 14px rgba(253, 230, 138, 0.35);
+}
+
+.seat.is-me {
+  background: rgba(11, 12, 16, 0.75);
+}
+
+.seat.is-winner {
+  border-color: #4ade80;
+  box-shadow: 0 0 0 1px #4ade80, 0 0 14px rgba(74, 222, 128, 0.35);
+}
+
+.seat-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.seat-chips {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.host-controls {
+  margin: 0 0 16px;
+}
+
+.my-hand-area {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.my-turn-label {
+  margin: 0 0 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.my-hand {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  min-height: 76px;
+}
+
+.hand-card {
+  width: 54px;
+  height: 76px;
+  font-size: 1.1rem;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.hand-card.playable {
+  cursor: pointer;
+  box-shadow: 0 0 0 2px #4ade80, 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+.hand-card.playable:hover {
+  transform: translateY(-6px);
+}
+
+.hand-card.unplayable {
+  opacity: 0.55;
+}
+
+#draw-card-btn {
+  padding: 10px 20px;
+  font-weight: 700;
+}
