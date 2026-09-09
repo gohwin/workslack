@@ -43,6 +43,32 @@ const ENEMY_HP_PER_SEC = 0.18; // enemies slowly get tougher the longer you surv
 const ENEMY_SPEED_PER_SEC = 0.12;
 const ENEMY_SPEED_CAP = 130;
 
+// LEVEL_UP_OPTIONS/BOSS_STAT_OPTIONS compound multiplicatively every pick
+// (1.15x damage per level, 1.3x per boss), so a long run's player damage
+// still grows roughly exponentially even after that pass pulled the
+// percentages down -- while the hp line above only ever grows linearly.
+// Past ~5 minutes the two curves diverge hard and enemies stop being able
+// to soak up any hits at all. This adds a second term that's exactly 0
+// before ENEMY_LATE_GAME_START_SEC (so early game is untouched -- same
+// numbers as before) and then grows with the SQUARE of time past that
+// point, so it stays a minor top-up around 5 minutes in but turns into the
+// main source of enemy hp well before a run reaches the 15-20 minute mark:
+//   t (min)   old hp   new hp   change
+//     3         52       52       +0%   (right at the ramp's start)
+//     5         74       79       +7%
+//    10        128      190      +48%
+//    15        182      363     +100%
+//    20        236      600     +154%
+// (all at hpMult=1, i.e. a "normal" enemy -- brute/boss/speedster scale off
+// this same base via their hpMult in ENEMY_TYPES, same as always.)
+const ENEMY_LATE_GAME_START_SEC = 180;
+const ENEMY_HP_LATE_PER_SEC_SQ = 0.00035;
+
+function enemyBaseHp(t) {
+  const lateT = Math.max(0, t - ENEMY_LATE_GAME_START_SEC);
+  return ENEMY_BASE_HP + t * ENEMY_HP_PER_SEC + lateT * lateT * ENEMY_HP_LATE_PER_SEC_SQ;
+}
+
 // Each enemy is one of these. hpMult/speedMult apply on top of the
 // time-scaled base hp/speed above, so a speedster is always relatively
 // fast/fragile and a brute always relatively slow/tanky no matter how far
@@ -575,7 +601,7 @@ function spawnEnemy(forcedType) {
   else if (edge === 2) { x = Math.random() * CANVAS_W; y = CANVAS_H + type.radius; }
   else { x = -type.radius; y = Math.random() * CANVAS_H; }
 
-  const baseHp = ENEMY_BASE_HP + elapsedSeconds * ENEMY_HP_PER_SEC;
+  const baseHp = enemyBaseHp(elapsedSeconds);
   const baseSpeed = Math.min(ENEMY_SPEED_CAP, ENEMY_BASE_SPEED + elapsedSeconds * ENEMY_SPEED_PER_SEC);
   const hp = baseHp * type.hpMult;
   const speed = baseSpeed * type.speedMult;
@@ -727,7 +753,7 @@ const ENEMY_TYPE_LABELS = { normal: "일반", speedster: "스피드형", brute: 
 // own numbers (hpMult/speedMult from ENEMY_TYPES applied on top of the same
 // time-scaled base spawnEnemy() uses).
 function renderEnemyStatsSidebar() {
-  const baseHp = ENEMY_BASE_HP + elapsedSeconds * ENEMY_HP_PER_SEC;
+  const baseHp = enemyBaseHp(elapsedSeconds);
   const baseSpeed = Math.min(ENEMY_SPEED_CAP, ENEMY_BASE_SPEED + elapsedSeconds * ENEMY_SPEED_PER_SEC);
   const spawnSec = (currentSpawnIntervalMs() / 1000).toFixed(2);
   const bossAlive = enemies.some((e) => e.isBoss);
